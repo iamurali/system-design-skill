@@ -23,14 +23,62 @@ Every design is validated against **27 gate criteria**, **5 cross-file consisten
 
 ## Quick start
 
-Say any of these to your AI agent:
+[Install](#installation) the skill once, then paste any prompt below into your agent.
+The skill activates automatically — no slash command required.
 
-- "Design a distributed rate limiter"
-- "System design for Google -- design a news feed"
-- "Prepare a URL shortener for PE interview"
-- "Break down a chat system"
+### Direct design
 
-The skill activates automatically based on your prompt.
+Start with any system design problem:
+
+> Design a distributed rate limiter
+>
+> Design an in-memory cache with LRU eviction
+>
+> Design a URL shortener
+
+### Company-specific
+
+Tailor the design to an interview target:
+
+> System design for Google — design a news feed
+>
+> System design for Amazon — design an order fulfillment system
+>
+> System design for Databricks — design a top-K trending articles system
+
+### PE interview prep
+
+Ask for Principal-Engineer-grade depth and rubric scoring:
+
+> Prepare a chat system for PE interview
+>
+> Prepare a distributed cache for PE interview at Meta
+>
+> System design interview — design a payment gateway
+
+### Break down an existing system
+
+Reverse-engineer or decompose a real product:
+
+> Break down how Slack handles real-time messaging
+>
+> Break down the architecture of a ride-sharing dispatch system
+>
+> Break down a notification system like Firebase Cloud Messaging
+
+### Mix and match
+
+Combine any pattern:
+
+| Pattern | Example |
+|---------|---------|
+| `Design a [system]` | Design a rate limiter |
+| `System design for [company] — design a [system]` | System design for Google — design a news feed |
+| `Prepare [system] for PE interview` | Prepare a URL shortener for PE interview |
+| `Break down [system or product]` | Break down a chat system |
+| `System design interview — design a [system]` | System design interview — design a search autocomplete |
+
+**Output:** 10 files in `system-design/<problem-name>/` under your project root.
 
 ## Installation
 
