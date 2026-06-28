@@ -1,0 +1,52 @@
+file_pattern: "10-interview-transcript.md"
+required_headings:
+  h1: 1
+  h2_min: 2
+required_sections:
+  - pattern: "(?i)Interviewer Review"
+    name: "Interviewer review"
+  - pattern: "(?i)Review Context"
+    name: "Review context"
+  - pattern: "(?i)Findings"
+    name: "Findings"
+  - pattern: "(?i)Independent Scores"
+    name: "Independent scores"
+  - pattern: "(?i)Research Triggers"
+    name: "Research triggers"
+interviewer_review:
+  required_patterns:
+    - "(?i)Self-scores visible:\\s*no"
+    - "(?i)Verdict:\\s*(PASS|PASS_WITH_MAJOR_FINDINGS|FAIL)"
+    - "(?i)Severity:\\s*(Critical|Major|Minor)"
+    - "(?i)Research required:\\s*(yes|no)"
+  min: 4
+  description: "Blind interviewer review with severity and research trigger decisions"
+independent_scores:
+  score_pattern: "(?i)(\\d+)/5"
+  min_scores: 5
+  required_dimensions:
+    - "(?i)technical.depth"
+    - "(?i)bottleneck.authenticity"
+    - "(?i)failure.mode"
+    - "(?i)technology.fit"
+    - "(?i)scale.grounding"
+research_gate:
+  major_critical_pattern: "(?i)Severity:\\s*(Critical|Major)"
+  research_section_pattern: "(?i)^##\\s+Research Findings"
+  no_research_pattern: "(?i)Research Triggers\\s*\\n\\s*None|None\\. Fix minor"
+  description: "Research appears only when major/critical findings require it"
+research_findings:
+  required_patterns:
+    - "(?i)Industry Standard"
+    - "(?i)Evidence"
+    - "(?i)Revision Guidance"
+    - "(?i)Why it applies"
+    - "(?i)Where it does not apply|does not apply"
+  min: 4
+  description: "Research output includes source-backed applicability and revision guidance"
+revision_log:
+  patterns:
+    - "(?i)Revision Log|Revisions Applied|Fixes Applied"
+    - "(?i)File/section to change|Changed|Updated"
+  min: 1
+  description: "Transcript records how findings were incorporated"

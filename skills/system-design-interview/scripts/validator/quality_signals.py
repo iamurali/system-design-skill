@@ -4,6 +4,13 @@ import re
 from pathlib import Path
 from dataclasses import dataclass, field
 
+from .depth_eval import (
+    ALGORITHM_TERMS,
+    PROTOCOL_TERMS,
+    classify_algorithm_depth,
+    score_research_quality,
+)
+
 
 @dataclass
 class QualitySignal:
@@ -110,44 +117,38 @@ COVERAGE_BLOCKS = [
 
 
 def count_algorithm_signals(content: str) -> QualitySignal:
-    total = 0
-    examples = []
-    for pattern in ALGORITHM_PATTERNS:
-        matches = re.findall(pattern, content, re.MULTILINE)
-        for m in matches[:2]:
-            example = m if isinstance(m, str) else m[0] if m else ""
-            if example and example not in examples:
-                examples.append(example[:50])
-        total += len(matches)
-
-    target = 3
+    classified = [
+        (name, level, example)
+        for name, level, example in classify_algorithm_depth(content)
+        if name in ALGORITHM_TERMS
+    ]
+    total = sum(level for _, level, _ in classified)
+    target = 6
+    has_derivation = any(level >= 3 for _, level, _ in classified)
     return QualitySignal(
-        name="Algorithm/math depth",
+        name="Algorithm depth L0-L3",
         count=total,
         target=target,
-        passed=total >= target,
-        examples=examples[:5],
+        passed=total >= target and has_derivation,
+        examples=[f"{name}=L{level}: {example}" for name, level, example in classified[:5]],
     )
 
 
 def count_protocol_signals(content: str) -> QualitySignal:
-    total = 0
-    examples = []
-    for pattern in PROTOCOL_PATTERNS:
-        matches = re.findall(pattern, content, re.MULTILINE | re.IGNORECASE)
-        for m in matches[:2]:
-            example = m if isinstance(m, str) else str(m)
-            if example and example not in examples:
-                examples.append(example[:50])
-        total += len(matches)
-
-    target = 3
+    classified = [
+        (name, level, example)
+        for name, level, example in classify_algorithm_depth(content)
+        if name in PROTOCOL_TERMS
+    ]
+    total = sum(level for _, level, _ in classified)
+    target = 5
+    has_mechanics = any(level >= 2 for _, level, _ in classified)
     return QualitySignal(
-        name="Protocol mechanics depth",
+        name="Protocol mechanics L0-L3",
         count=total,
         target=target,
-        passed=total >= target,
-        examples=examples[:5],
+        passed=total >= target and has_mechanics,
+        examples=[f"{name}=L{level}: {example}" for name, level, example in classified[:5]],
     )
 
 
@@ -257,6 +258,17 @@ def count_tables(content: str) -> QualitySignal:
     )
 
 
+def count_research_quality(transcript: str) -> QualitySignal:
+    depth_check = score_research_quality(transcript)
+    return QualitySignal(
+        name=depth_check.name,
+        count=depth_check.count,
+        target=depth_check.target,
+        passed=depth_check.passed,
+        examples=depth_check.examples or [depth_check.evidence],
+    )
+
+
 def run_quality_scoring(folder: Path) -> QualityReport:
     """Run quality signal scoring across deep dives + bottlenecks files."""
     report = QualityReport()
@@ -264,10 +276,12 @@ def run_quality_scoring(folder: Path) -> QualityReport:
     dd_path = folder / "07-deep-dives.md"
     bn_path = folder / "08-bottlenecks-and-tradeoffs.md"
     hld_path = folder / "06-high-level-design.md"
+    transcript_path = folder / "10-interview-transcript.md"
 
     dd_content = dd_path.read_text(encoding="utf-8") if dd_path.exists() else ""
     bn_content = bn_path.read_text(encoding="utf-8") if bn_path.exists() else ""
     hld_content = hld_path.read_text(encoding="utf-8") if hld_path.exists() else ""
+    transcript_content = transcript_path.read_text(encoding="utf-8") if transcript_path.exists() else ""
 
     combined_deep = dd_content + "\n" + bn_content
     combined_all = dd_content + "\n" + bn_content + "\n" + hld_content
@@ -280,5 +294,6 @@ def run_quality_scoring(folder: Path) -> QualityReport:
     report.signals.append(count_coverage_blocks(combined_all))
     report.signals.append(count_code_blocks(dd_content))
     report.signals.append(count_tables(combined_all))
+    report.signals.append(count_research_quality(transcript_content))
 
     return report

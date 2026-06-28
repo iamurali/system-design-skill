@@ -4,7 +4,7 @@ An open [Agent Skill](https://agentskills.io) that generates **Principal-Enginee
 
 ## What it does
 
-Say "design a URL shortener" (or any system design problem) to your AI agent. The skill produces **10 artifacts** through a rigorous 6-phase generate-evaluate-fix loop:
+Say "design a URL shortener" (or any system design problem) to your AI agent. The skill produces **11 artifacts** through a rigorous 6-phase generate-evaluate-fix loop plus an independent Interviewer/Research depth review:
 
 | File | Content |
 |------|---------|
@@ -18,8 +18,14 @@ Say "design a URL shortener" (or any system design problem) to your AI agent. Th
 | `07-deep-dives.md` | 4-6 component deep dives with tiered solutions |
 | `08-bottlenecks-and-tradeoffs.md` | Failure matrix, anti-patterns, evolution roadmap |
 | `09-eval-report.md` | Machine-verified PASS/FAIL quality report |
+| `10-interview-transcript.md` | Blind Interviewer critique, conditional Research findings, revision log |
 
-Every design is validated against **27 gate criteria**, **5 cross-file consistency checks**, and a **10-dimension PE rubric** (avg >= 4.5, no dimension < 4).
+Every design is validated against **27 gate criteria**, **5 cross-file consistency checks**, a **10-dimension PE rubric** (avg >= 4.5, no dimension < 4), and a stricter technical-depth eval that checks L0-L3 algorithm/protocol depth, numeric breaking points, bottleneck authenticity, and conditional Research quality.
+
+The Interviewer agent reviews the design blind to self-scores after the HLD,
+deep dives, and bottlenecks. The Research agent runs only for **Major** or
+**Critical** findings, using local reference packs plus web research to bring
+back industry-standard DE/PE/Senior Staff solutions.
 
 ## Quick start
 
@@ -78,7 +84,7 @@ Combine any pattern:
 | `Break down [system or product]` | Break down a chat system |
 | `System design interview — design a [system]` | System design interview — design a search autocomplete |
 
-**Output:** 10 files in `system-design/<problem-name>/` under your project root.
+**Output:** 11 files in `system-design/<problem-name>/` under your project root.
 
 ## Installation
 
@@ -141,6 +147,8 @@ skills/
     SKILL.md                    # Entry point (Agent Skills standard)
     references/
       orchestrator.md           # 6-phase generate-evaluate-fix loop
+      interviewer-protocol.md    # Blind adversarial depth review
+      research-protocol.md       # Conditional major/critical gap research
       reasoning-engine.md       # Design methodology + failure modes
       principal-engineer-bar.md # 10-dimension PE rubric
       building-blocks-index.md  # L0-L7 component catalog
@@ -161,7 +169,8 @@ The skill uses **progressive disclosure** to manage context efficiently:
 1. Agent reads only skill metadata at startup (~100 tokens)
 2. Full SKILL.md loads when a system design task is detected
 3. Reference files load just-in-time per phase (never all 7 at once)
-4. Context checkpoint after Phase 3 compresses prior work to ~20 lines
+4. Interviewer/Research protocols load only at configured checkpoints
+5. Context checkpoint after Phase 3 compresses prior work to ~20 lines
 
 ## Validator
 
@@ -172,6 +181,11 @@ stdlib only (no external dependencies).
 cd skills/system-design-interview/scripts
 python3 -m validator validate /path/to/system-design/your-problem/
 ```
+
+The validator now reports four layers: structural gates, cross-file consistency,
+quality signals, and technical-depth eval. `10-interview-transcript.md` is
+validated for blind review, independent scores, conditional Research triggers,
+and revision logging.
 
 ## The Principal Engineer bar
 

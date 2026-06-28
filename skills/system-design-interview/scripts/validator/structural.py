@@ -41,6 +41,7 @@ REQUIRED_FILES = [
     "06-high-level-design.md",
     "07-deep-dives.md",
     "08-bottlenecks-and-tradeoffs.md",
+    "10-interview-transcript.md",
 ]
 
 
@@ -619,6 +620,78 @@ def validate_interview_points(content: str, schema: dict) -> list[CheckResult]:
     )]
 
 
+def validate_interview_transcript(content: str, schema: dict) -> list[CheckResult]:
+    results = []
+
+    review = schema.get("interviewer_review", {})
+    if review:
+        present, count = check_patterns_present(
+            content,
+            review.get("required_patterns", []),
+            review.get("min", 1),
+        )
+        results.append(CheckResult(
+            gate="Interviewer",
+            criterion="Blind interviewer review",
+            passed=present,
+            evidence=f"Found {count} interviewer-review signal(s), need >= {review.get('min', 1)}",
+        ))
+
+    scores = schema.get("independent_scores", {})
+    if scores:
+        score_pat = scores.get("score_pattern", r"(\d+)/5")
+        score_count = len(re.findall(score_pat, content))
+        dimensions = scores.get("required_dimensions", [])
+        dim_count = sum(1 for pattern in dimensions if re.search(pattern, content, re.IGNORECASE))
+        min_scores = scores.get("min_scores", 5)
+        passed = score_count >= min_scores and dim_count >= len(dimensions)
+        results.append(CheckResult(
+            gate="Interviewer",
+            criterion="Independent depth scores",
+            passed=passed,
+            evidence=f"Scores={score_count}, dimensions={dim_count}/{len(dimensions)}",
+        ))
+
+    gate = schema.get("research_gate", {})
+    if gate:
+        major_critical = len(re.findall(gate.get("major_critical_pattern", ""), content, re.IGNORECASE))
+        has_research = bool(re.search(gate.get("research_section_pattern", ""), content, re.IGNORECASE | re.MULTILINE))
+        has_no_research = bool(re.search(gate.get("no_research_pattern", ""), content, re.IGNORECASE | re.MULTILINE))
+        passed = (major_critical > 0 and has_research) or (major_critical == 0 and has_no_research)
+        results.append(CheckResult(
+            gate="Interviewer",
+            criterion="Conditional research gate",
+            passed=passed,
+            evidence=f"Major/critical findings={major_critical}, research_section={has_research}, no_research={has_no_research}",
+        ))
+
+    if re.search(r"(?i)^##\s+Research Findings", content, re.MULTILINE):
+        findings = schema.get("research_findings", {})
+        present, count = check_patterns_present(
+            content,
+            findings.get("required_patterns", []),
+            findings.get("min", 1),
+        )
+        results.append(CheckResult(
+            gate="Research",
+            criterion="Research finding completeness",
+            passed=present,
+            evidence=f"Found {count} research-quality signal(s), need >= {findings.get('min', 1)}",
+        ))
+
+    revision = schema.get("revision_log", {})
+    if revision:
+        present, count = check_patterns_present(content, revision.get("patterns", []), revision.get("min", 1))
+        results.append(CheckResult(
+            gate="Interviewer",
+            criterion="Revision log present",
+            passed=present,
+            evidence=f"Found {count} revision-log signal(s), need >= {revision.get('min', 1)}",
+        ))
+
+    return results
+
+
 FILE_VALIDATORS = {
     "01-requirements.md": [validate_capacity_chain, validate_reframing],
     "02-non-functional-requirements.md": [validate_latency_budget, validate_error_budget, validate_runbook, validate_consistency_consequence],
@@ -632,6 +705,7 @@ FILE_VALIDATORS = {
         validate_pe_rubric, validate_tradeoff_matrix, validate_real_incidents,
         validate_anti_patterns, validate_evolution, validate_interview_points,
     ],
+    "10-interview-transcript.md": [validate_interview_transcript],
 }
 
 SCHEMA_MAP = {
@@ -643,6 +717,7 @@ SCHEMA_MAP = {
     "06-high-level-design.md": "06-hld.yaml",
     "07-deep-dives.md": "07-deep-dives.yaml",
     "08-bottlenecks-and-tradeoffs.md": "08-bottlenecks.yaml",
+    "10-interview-transcript.md": "10-interview.yaml",
 }
 
 

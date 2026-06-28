@@ -21,15 +21,19 @@ For each phase 1-6:
     After 2 failures: flag in "known issues", proceed anyway
 
 After all 6 phases:
+  INTERVIEWER-RESEARCH LOOP (default after Phases 4, 5, 6):
+    1. Interviewer agent reviews generated files blind to self-scores
+    2. If findings are critical/major -> Research agent investigates only those gaps
+    3. Revise affected sections and append evidence to 10-interview-transcript.md
   CROSS-FILE CONSISTENCY PROTOCOL (5 checks)
   OUTER EVAL LOOP (max 1 revision pass):
-    1. Score all 10 PE rubric dimensions
+    1. Score all 10 PE rubric dimensions using the Interviewer's independent findings
     2. If avg ≥ 4.5 and no dim < 4 → DONE
     3. Else → revise weakest file section, re-score
   VALIDATOR HARNESS:
     1. Run python validator → produces 09-eval-report.md
     2. If FAIL: fix flagged issues (max 1 pass), re-run
-    3. Final output: 9 files with traceable PASS/FAIL evidence
+    3. Final output: 10 files plus diagram with traceable PASS/FAIL evidence
 ```
 
 ---
@@ -48,6 +52,14 @@ After all 6 phases:
 4. If the user asks "what should I practice," read `references/problem-bank.md`.
 
 Do NOT preload all 7 reference files. Load just-in-time per phase.
+
+### Optional agent independence
+
+When the platform supports explicit model selection, run the Interviewer agent
+with a different model family from the generator (for example, GPT judging a
+Claude-generated design). When unavailable, use the same model with the
+Interviewer prompt from `references/interviewer-protocol.md`. In both cases, the
+Interviewer must be blind to self-scores and phase gate PASS/FAIL claims.
 
 ---
 
@@ -240,6 +252,29 @@ skill produces a clean diagram, proceed.
 
 ---
 
+## Interviewer Checkpoint A -- after Phase 4
+
+**Output**: append to `10-interview-transcript.md`
+**Load**: `references/interviewer-protocol.md`
+
+Run the Interviewer agent against:
+- `01-requirements.md` through `06-high-level-design.md`
+- The context checkpoint
+- The Phase 4 HLD and Excalidraw source context
+
+Focus on:
+- Wrong technology choices that are not forced by numbers
+- Scale reasoning holes between requirements and HLD
+- Missing failure/deploy flows
+- Architecture options that were skipped too quickly
+
+If the Interviewer produces any **Critical** or **Major** finding, load
+`references/research-protocol.md` and run the Research agent only for those
+findings. Revise the affected HLD sections before Phase 5. If findings are only
+minor, fix locally and proceed without Research.
+
+---
+
 ## Phase 5: Go Deep
 
 **Output**: `07-deep-dives.md`
@@ -288,6 +323,29 @@ Each deep dive MUST include:
 | c | Curveball protocol | Each deep dive has a "what if" with: (1) named constraint change, (2) invalidated assumption, (3) blast radius scope, (4) scoped redesign, (5) verification rest holds. |
 | d | Depth signal | At least 1 deep dive includes algorithm internals, protocol mechanics, or mathematical reasoning that teaches something non-obvious. |
 | e | Breaking point per dive | Each deep dive names a specific numeric threshold where the approach stops working (not "at higher scale" — a number). |
+
+---
+
+## Interviewer Checkpoint B -- after Phase 5
+
+**Output**: append to `10-interview-transcript.md`
+**Load**: `references/interviewer-protocol.md`
+
+Run the Interviewer agent against:
+- `06-high-level-design.md`
+- `07-deep-dives.md`
+- The context checkpoint
+
+Focus on:
+- Deep dives that repeat the HLD instead of going 2-3 levels deeper
+- Algorithm or protocol name-drops without mechanics
+- Missing math, thresholds, or recovery behavior
+- Curveballs that do not invalidate a real assumption
+
+If there are **Critical** or **Major** findings, run the Research agent for
+those findings only. Revise the affected deep dives before Phase 6. Minor
+findings are fixed locally unless the same minor pattern appears in multiple
+dives.
 
 ---
 
@@ -349,6 +407,69 @@ The bottlenecks file MUST contain these sections:
 
 ---
 
+## Interviewer Checkpoint C -- after Phase 6
+
+**Output**: append to `10-interview-transcript.md`
+**Load**: `references/interviewer-protocol.md`
+
+Run the Interviewer agent against the complete design set:
+- `01-requirements.md` through `08-bottlenecks-and-tradeoffs.md`
+- The context checkpoint
+- Any prior Interviewer findings and Research findings in
+  `10-interview-transcript.md`
+
+Focus on:
+- Bottleneck authenticity
+- Incident reality and production grounding
+- Evolution roadmap depth at 10x/100x
+- Whether the weakest PE rubric dimension is genuine
+- Any unresolved major/critical finding from earlier checkpoints
+
+If there are **Critical** or **Major** findings, run the Research agent only for
+those findings and revise the affected sections. Then append a **Revision Log**
+to `10-interview-transcript.md` listing which files changed and which findings
+were closed. If only minor findings remain, document them as known residual
+risks and proceed.
+
+---
+
+## Interviewer-Research Loop Rules
+
+The Interviewer-Research loop is a depth-control mechanism, not a second
+generator. Keep revisions scoped.
+
+1. **Interviewer runs at configurable points.** Default:
+   `interview_points: [4, 5, 6]`. Trial runs may disable a checkpoint if it adds
+   cost without changing depth scores.
+2. **Research is conditional.** Research runs only when at least one finding is
+   **Critical** or **Major**. Minor findings are fixed locally unless repeated
+   across phases.
+3. **Research is targeted.** The Research agent investigates only the named
+   major/critical findings, using local references first and web research for
+   gaps.
+4. **Transcript is mandatory.** Append every Interviewer pass, Research pass,
+   and revision log to `10-interview-transcript.md`.
+5. **Blind review.** The Interviewer must not see phase self-evaluations,
+   PE self-scores, or `09-eval-report.md`.
+6. **Cross-model when available.** Prefer a different model family for the
+   Interviewer when the platform supports it. Otherwise, use the same model with
+   `references/interviewer-protocol.md`.
+7. **No broad rewrites.** A major/critical finding maps to specific sections.
+   Revise those sections only unless the architecture is critically invalid.
+
+### Platform spawning guidance
+
+- **Cursor**: use a subagent/task with the Interviewer prompt. If model
+  selection is available, choose a different model family from the generator.
+- **Claude Code**: spawn a separate agent or subprocess with the Interviewer
+  prompt and pass only the files under review.
+- **Codex CLI**: run the Interviewer as a parallel agent or separate CLI pass.
+- **SKILL.md-compatible agents without subagents**: simulate the roles
+  sequentially, but preserve the blind-review rule by hiding self-scores from
+  the Interviewer prompt.
+
+---
+
 ## Cross-File Consistency Protocol
 
 Run during Gate 6. Re-read the generated files (use the context checkpoint for
@@ -393,12 +514,16 @@ fix it before proceeding.
 ## Outer Eval Loop
 
 Runs after all 8 files pass their phase gates and the cross-file consistency
-protocol.
+protocol, and after the Interviewer-Research loop has closed all critical and
+major findings or documented why they remain.
 
 ```
 REPEAT (max 1 revision pass):
   1. Score the design against all 10 PE rubric dimensions
      (read references/principal-engineer-bar.md scoring template)
+     Use the Interviewer's independent findings in 10-interview-transcript.md
+     as the primary evidence for technical depth, failure mastery, production
+     grounding, and collaboration/adaptability.
   2. If average ≥ 4.5 AND no dimension < 4 → DONE
   3. If below bar:
      a. Identify the weakest dimension
@@ -411,7 +536,8 @@ REPEAT (max 1 revision pass):
 ```
 
 The self-assessment is the last thing written. It reflects the actual design,
-not an aspirational version.
+not an aspirational version. It must not contradict unresolved critical/major
+Interviewer findings.
 
 ---
 
@@ -443,6 +569,10 @@ The validator checks:
   authenticity.
 - **Quality signals**: Algorithm/protocol depth, production references, failure
   scenarios, tradeoff triads, coverage sweep completeness.
+- **Depth eval**: L0-L3 algorithm/protocol depth, derivation completeness,
+  tradeoff specificity, numeric breaking points, incident verifiability,
+  bottleneck depth, Interviewer transcript independence, and conditional
+  Research quality.
 
 The `09-eval-report.md` is the final output artifact. It provides traceable
 evidence that quality gates were checked.
@@ -493,6 +623,7 @@ this skill's install location):
 07-deep-dives.md
 08-bottlenecks-and-tradeoffs.md
 09-eval-report.md                  (produced by validator harness — PASS/FAIL evidence)
+10-interview-transcript.md         (Interviewer critique, conditional Research findings, revision log)
 ```
 
 Derive `<problem-name>` as a short kebab-case slug from the problem prompt
@@ -535,6 +666,8 @@ All references live in `references/` relative to this file.
 |------|-------------|
 | `references/reasoning-engine.md` | Before starting (lines 1-131). Full file at Phase 6. |
 | `references/principal-engineer-bar.md` | Phase 6 and outer eval loop. |
+| `references/interviewer-protocol.md` | Interviewer checkpoints after Phases 4, 5, 6. |
+| `references/research-protocol.md` | Conditional Research for major/critical Interviewer findings. |
 | `references/building-blocks-index.md` | Phase 3, Phase 4, Phase 6 coverage sweep. |
 | `references/company-profiles.md` | When user names a company. |
 | `references/problem-bank.md` | When user asks for a problem to practice. |

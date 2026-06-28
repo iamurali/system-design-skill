@@ -12,6 +12,7 @@ from pathlib import Path
 from .structural import run_structural_validation
 from .cross_file import run_cross_file_checks
 from .quality_signals import run_quality_scoring
+from .depth_eval import run_depth_eval
 from .report import write_report
 
 
@@ -60,14 +61,20 @@ def validate_command(args):
     quality_total = len(quality.signals)
     print_section("Quality", quality.passed, quality_pass, quality_total)
 
-    report_path = write_report(folder, structural, consistency, quality)
+    print("  Running technical depth evaluation...")
+    depth = run_depth_eval(folder)
+    depth_pass = sum(1 for c in depth.checks if c.passed)
+    depth_total = len(depth.checks)
+    print_section("Depth", depth.passed, depth_pass, depth_total)
+
+    report_path = write_report(folder, structural, consistency, quality, depth)
 
     print(f"\n  Report written to: {report_path.relative_to(folder.parent)}")
 
-    total_pass = struct_pass + consist_pass + quality_pass
-    total_checks = struct_total + consist_total + quality_total
+    total_pass = struct_pass + consist_pass + quality_pass + depth_pass
+    total_checks = struct_total + consist_total + quality_total + depth_total
     overall_pct = total_pass / total_checks * 100 if total_checks > 0 else 0
-    all_passed = structural.passed and consistency.passed and quality.passed
+    all_passed = structural.passed and consistency.passed and quality.passed and depth.passed
 
     print_header(f"OVERALL: {'PASS' if all_passed else 'FAIL'} ({total_pass}/{total_checks}, {overall_pct:.0f}%)")
 
@@ -82,6 +89,9 @@ def validate_command(args):
         for s in quality.signals:
             if not s.passed:
                 print(f"    - [Quality] {s.name}: {s.count}/{s.target}")
+        for c in depth.checks:
+            if not c.passed:
+                print(f"    - [Depth] {c.name}: {c.count}/{c.target}")
         print()
 
     sys.exit(0 if all_passed else 1)

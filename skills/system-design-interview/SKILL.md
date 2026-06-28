@@ -6,10 +6,11 @@ description: >-
   [company]", "prepare [system] for PE interview", "break down [system]",
   "system design interview", or names any system design problem (URL shortener,
   distributed cache, news feed, rate limiter, top-K, chat system, etc.).
-  Produces 10 artifacts per problem (8 design docs + 1 Excalidraw diagram +
-  1 eval report with PASS/FAIL evidence) covering requirements, NFRs, entities,
-  API, schema, HLD, deep dives, bottlenecks/tradeoffs, and machine-verified
-  quality validation. Calibrated for Principal Engineer interviews at
+  Produces 11 artifacts per problem (8 design docs + 1 Excalidraw diagram +
+  1 eval report with PASS/FAIL evidence + 1 independent interview transcript)
+  covering requirements, NFRs, entities, API, schema, HLD, deep dives,
+  bottlenecks/tradeoffs, adversarial technical-depth review, and
+  machine-verified quality validation. Calibrated for Principal Engineer interviews at
   Databricks, Anthropic, OpenAI, Google, Amazon, and Microsoft.
 license: MIT
 compatibility: >-
@@ -37,6 +38,7 @@ Read `references/orchestrator.md` (relative to this skill directory). It defines
 - Cross-file consistency protocol (5 checks across all output files)
 - Outer eval loop with PE rubric scoring
 - Validator harness that produces machine-verified `09-eval-report.md`
+- Interviewer-Research loop that produces `10-interview-transcript.md`
 - Context management protocol to prevent context overload
 - Just-in-time reference loading schedule
 
@@ -46,13 +48,28 @@ Follow the orchestrator exactly. It tells you which reference files to load at
 each phase, when to create a context checkpoint, and how to run the inner
 generate-evaluate-fix cycle (max 2 iterations per phase gate).
 
-**Step 3 -- Run the outer eval loop.**
+**Step 3 -- Run the Interviewer-Research loop.**
 
-After all 8 files pass their phase gates, score against the PE rubric. If below
-bar (avg < 4.5 or any dimension < 4), revise the weakest file section. Max 1
-revision pass.
+After Phase 4, Phase 5, and Phase 6, run the Interviewer checkpoint from
+`references/interviewer-protocol.md`. The Interviewer reviews blind to
+self-scores and flags depth gaps, fake bottlenecks, wrong technology choices,
+missing failures, and scale holes. Run `references/research-protocol.md` only
+for **Major** or **Critical** findings; minor findings are fixed locally unless
+they repeat. Append the critique, conditional Research findings, and revision
+log to `10-interview-transcript.md`.
 
-**Step 4 -- Run the validator harness.**
+When the platform supports model selection, prefer a different model family for
+the Interviewer to reduce self-eval leniency. Otherwise, use the same model with
+the Interviewer protocol.
+
+**Step 4 -- Run the outer eval loop.**
+
+After all 8 design files pass their phase gates and the Interviewer-Research
+loop has closed major/critical findings, score against the PE rubric using the
+Interviewer findings as primary evidence. If below bar (avg < 4.5 or any
+dimension < 4), revise the weakest file section. Max 1 revision pass.
+
+**Step 5 -- Run the validator harness.**
 
 After the outer eval loop completes, run the Python validator. Find the
 validator at `scripts/validator/` relative to this skill directory. Run it
@@ -64,8 +81,8 @@ python3 -m validator validate <output-folder>
 
 Run this command from the `scripts/` directory within this skill, or use an
 absolute path. This produces `09-eval-report.md` with PASS/FAIL evidence for
-every gate criterion, cross-file consistency check, and quality signal. If
-FAIL, fix flagged issues (max 1 pass) and re-run.
+every gate criterion, cross-file consistency check, quality signal, and
+technical-depth check. If FAIL, fix flagged issues (max 1 pass) and re-run.
 
 **Output location:** Generate all files in `system-design/<problem-name>/`
 relative to the user's project root (the repo where the user invoked the
@@ -115,6 +132,10 @@ PE is not "Staff but more." It is a qualitatively different signal:
   `09-eval-report.md` with machine-verified PASS/FAIL results.
 - **[references/principal-engineer-bar.md](references/principal-engineer-bar.md)**
   -- The 10-dimension PE rubric and self-scoring.
+- **[references/interviewer-protocol.md](references/interviewer-protocol.md)**
+  -- Independent adversarial review protocol for technical depth.
+- **[references/research-protocol.md](references/research-protocol.md)** --
+  Conditional Research agent protocol for major/critical gaps.
 - **[references/reasoning-engine.md](references/reasoning-engine.md)** -- The
   6-phase design loop, failure modes, coverage sweep, curveball protocol.
 - **[references/building-blocks-index.md](references/building-blocks-index.md)**
