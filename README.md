@@ -2,6 +2,8 @@
 
 An open [Agent Skill](https://agentskills.io) that generates **Principal-Engineer-grade** system design interview preparation documents. Works with Cursor, Codex CLI, Claude Code, Gemini CLI, GitHub Copilot, and any SKILL.md-compatible AI agent.
 
+![How the skill works](assets/architecture.png)
+
 ## What it does
 
 Say "design a URL shortener" (or any system design problem) to your AI agent. The skill produces **11 artifacts** through a rigorous 6-phase generate-evaluate-fix loop plus an independent Interviewer/Research depth review:
@@ -140,6 +142,58 @@ or add a remote rule (`https://github.com/iamurali/system-design-skill`) — no
 terminal required.
 
 ## Architecture
+
+![How the skill works](assets/architecture.png)
+
+### Execution flow
+
+```mermaid
+flowchart TB
+  subgraph trigger [Trigger]
+    User["User prompt\nDesign a URL shortener"]
+    Agent["Any SKILL.md agent\nCursor / Claude / Codex / Gemini / Copilot"]
+  end
+
+  subgraph entry [Progressive disclosure]
+    Meta["SKILL.md metadata ~100 tokens"]
+    Skill["Full SKILL.md + orchestrator.md"]
+  end
+
+  subgraph phases [6-Phase inner loop]
+    P1["1 Requirements"]
+    P2["2 NFRs"]
+    P3["3 Entities / API / Schema"]
+    CP["Context checkpoint"]
+    P4["4 HLD + Excalidraw"]
+    P5["5 Deep dives"]
+    P6["6 Bottlenecks / tradeoffs"]
+    P1 --> P2 --> P3 --> CP --> P4 --> P5 --> P6
+  end
+
+  subgraph depth [Interviewer-Research checkpoints]
+    IV["Interviewer blind review\nafter phases 4, 5, 6"]
+    RS["Research agent\nMajor/Critical findings only"]
+    IV --> RS
+  end
+
+  subgraph outer [Outer quality loops]
+    CF["Cross-file consistency\n5 checks"]
+    PE["PE rubric\n10 dims avg >= 4.5"]
+    VAL["Python validator\n27 gates + depth eval"]
+  end
+
+  subgraph out [Output]
+    Files["11 artifacts in\nsystem-design/problem-name/"]
+  end
+
+  User --> Agent --> Meta --> Skill --> phases
+  P4 --> IV
+  P5 --> IV
+  P6 --> IV
+  phases --> CF --> PE --> VAL --> Files
+```
+
+### Repository layout
 
 ```
 skills/

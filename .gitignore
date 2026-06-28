@@ -20,5 +20,10 @@ system-design/
 # uv
 .venv/
 
-# Rendered diagrams (generated artifacts)
+# Rendered diagrams (generated artifacts) — except README hero
 *.png
+!assets/architecture.png
+
+# Local render tooling
+assets/.venv/
+assets/node_modules/
