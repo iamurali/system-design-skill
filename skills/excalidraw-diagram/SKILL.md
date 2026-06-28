@@ -21,6 +21,7 @@ cd <path-to-this-skill>/references && uv sync && uv run playwright install chrom
 ```
 
 Where `<path-to-this-skill>` is the directory containing this SKILL.md file.
+Or, if you installed via `install.sh`: `curl -fsSL https://raw.githubusercontent.com/iamurali/system-design-skill/main/install.sh | bash -s -- --excalidraw`
 
 ## Customization
 

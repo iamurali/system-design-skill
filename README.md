@@ -34,62 +34,56 @@ The skill activates automatically based on your prompt.
 
 ## Installation
 
-### Cursor (Marketplace plugin)
-
-Install from the [Cursor Marketplace](https://cursor.com/marketplace) or add as a remote rule:
-
-1. Open **Customize** in the sidebar
-2. Go to **Rules** and click **Add Rule**
-3. Select **Remote Rule (Github)**
-4. Enter: `https://github.com/iamurali/system-design-skill`
-
-### Cursor (local)
+Works with Cursor, Claude Code, Codex, Gemini CLI, GitHub Copilot, and any
+[Agent Skills](https://agentskills.io)-compatible agent. Pick either method:
 
 ```bash
-cd your-project
-git clone https://github.com/iamurali/system-design-skill.git .cursor/plugins/system-design-skill
+# Option A — open skills ecosystem (Node.js required)
+npx skills add iamurali/system-design-skill --all -g -y
+
+# Option B — zero dependencies (bash + git/curl)
+curl -fsSL https://raw.githubusercontent.com/iamurali/system-design-skill/main/install.sh | bash
 ```
 
-### Codex CLI
+Both install `system-design-interview` and `excalidraw-diagram` to
+`~/.agents/skills/` — the vendor-neutral path recognized by all major agents.
+
+### Project-local
 
 ```bash
-git clone https://github.com/iamurali/system-design-skill.git ~/.codex/skills/system-design-skill
+npx skills add iamurali/system-design-skill --all -y
+# or
+curl -fsSL https://raw.githubusercontent.com/iamurali/system-design-skill/main/install.sh | bash -s -- --project
 ```
 
-Or symlink into your project:
+### Update
 
 ```bash
-cd your-project
-mkdir -p .agents/skills
-ln -s /path/to/system-design-skill/skills/system-design-interview .agents/skills/system-design-interview
-ln -s /path/to/system-design-skill/skills/excalidraw-diagram .agents/skills/excalidraw-diagram
+npx skills update
+# or
+curl -fsSL https://raw.githubusercontent.com/iamurali/system-design-skill/main/install.sh | bash -s -- --update
 ```
 
-### Claude Code
+### Optional: diagram rendering
+
+PNG rendering for Excalidraw diagrams requires [uv](https://docs.astral.sh/uv/)
+and Playwright. Run once after install:
 
 ```bash
-# Personal (all projects)
-git clone https://github.com/iamurali/system-design-skill.git ~/.claude/skills/system-design-skill
-
-# Or project-specific
-cd your-project
-mkdir -p .claude/skills
-ln -s /path/to/system-design-skill/skills/system-design-interview .claude/skills/system-design-interview
-ln -s /path/to/system-design-skill/skills/excalidraw-diagram .claude/skills/excalidraw-diagram
+curl -fsSL https://raw.githubusercontent.com/iamurali/system-design-skill/main/install.sh | bash -s -- --excalidraw
 ```
 
-### Gemini CLI / GitHub Copilot
+Or manually:
 
 ```bash
-cd your-project
-mkdir -p .agents/skills
-ln -s /path/to/system-design-skill/skills/system-design-interview .agents/skills/system-design-interview
-ln -s /path/to/system-design-skill/skills/excalidraw-diagram .agents/skills/excalidraw-diagram
+cd ~/.agents/skills/excalidraw-diagram/references && uv sync && uv run playwright install chromium
 ```
 
-### Manual (any agent)
+### Cursor users
 
-Clone the repo anywhere and point your agent at `skills/system-design-interview/SKILL.md`.
+You can also install from the [Cursor Marketplace](https://cursor.com/marketplace)
+or add a remote rule (`https://github.com/iamurali/system-design-skill`) — no
+terminal required.
 
 ## Architecture
 
@@ -148,12 +142,12 @@ it is a qualitatively different signal:
 
 | Platform | Status | Install method |
 |----------|--------|----------------|
-| Cursor | Supported | Marketplace plugin or remote rule |
-| Codex CLI | Supported | Clone to `~/.codex/skills/` |
-| Claude Code | Supported | Clone to `~/.claude/skills/` |
-| Gemini CLI | Supported | Clone to `.agents/skills/` |
-| GitHub Copilot | Supported | Clone to `.agents/skills/` |
-| Any SKILL.md agent | Supported | Point at SKILL.md |
+| Cursor | Supported | `npx skills` / `install.sh` / Marketplace |
+| Claude Code | Supported | `npx skills` / `install.sh` |
+| Codex CLI | Supported | `npx skills` / `install.sh` |
+| Gemini CLI | Supported | `npx skills` / `install.sh` |
+| GitHub Copilot | Supported | `npx skills` / `install.sh` |
+| Any SKILL.md agent | Supported | `~/.agents/skills/` |
 
 **Requirements:** Python 3.10+ (for validator only). Excalidraw rendering
 requires [uv](https://docs.astral.sh/uv/) + Playwright (optional).

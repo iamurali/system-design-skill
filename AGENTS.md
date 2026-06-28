@@ -5,6 +5,8 @@ skill. It is distributed as an open Agent Skill compatible with Cursor, Codex
 CLI, Claude Code, Gemini CLI, GitHub Copilot, and any SKILL.md-compatible
 agent.
 
+To install: see [README Installation](README.md#installation).
+
 ## Activation
 
 When the user says "design a system", "system design for [company]", "prepare
