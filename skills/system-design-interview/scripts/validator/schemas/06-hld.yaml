@@ -1,0 +1,46 @@
+file_pattern: "06-high-level-design.md"
+required_headings:
+  h1: 1
+  h2_min: 3
+required_sections:
+  - pattern: "(?i)(architect|system|design|diagram|overview)"
+    name: "Architecture overview"
+flows:
+  data_flow:
+    patterns:
+      - "(?i)(write.*path|data.*flow|ingestion|write.*flow)"
+      - "(?i)(producer|publisher|writer|ingest)"
+    description: "Write/data flow present"
+  read_flow:
+    patterns:
+      - "(?i)(read.*path|read.*flow|query.*path|serving.*layer)"
+      - "(?i)(consumer|reader|fetch|serve)"
+    description: "Read/query flow present"
+  failure_flow:
+    patterns:
+      - "(?i)(failure.*flow|degradation|failover|what.*happens.*when)"
+      - "(?i)(circuit.breaker|fallback|graceful)"
+    description: "Failure/degradation flow present"
+  deploy_flow:
+    patterns:
+      - "(?i)(deploy|rollout|canary|blue.green|rolling)"
+      - "(?i)(zero.downtime|migration|cutover)"
+    description: "Deployment flow present"
+component_annotations:
+  capacity_pattern: "(?i)(\\d+[KMB]?\\s*(QPS|req|ops|TPS)|handles.*\\d+)"
+  failure_pattern: "(?i)(if.*fails|when.*down|failure.*mode|degrades)"
+  min_annotated: 3
+  description: "Components annotated with capacity and failure modes"
+tradeoff_triads:
+  patterns:
+    - "(?i)(solves|worsens|change.*(it|this|decision))"
+    - "(?i)(what.*solve|what.*worse|what.*change)"
+    - "(?i)(benefit|cost|when.to.switch)"
+  min: 4
+  description: "Trade-off triads for major decisions"
+options_presented:
+  patterns:
+    - "(?i)(option.*(A|B|C|1|2|3)|alternative|approach.*(1|2|A|B))"
+    - "(?i)(vs\\.?|versus|compared.to|instead.of)"
+  min: 1
+  description: "At least one contested decision with multiple options"

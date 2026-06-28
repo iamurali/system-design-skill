@@ -1,0 +1,27 @@
+file_pattern: "04-api-design.md"
+required_headings:
+  h1: 1
+  h2_min: 2
+required_sections:
+  - pattern: "(?i)(endpoint|API|route|method)"
+    name: "API endpoints"
+api_shapes:
+  request_patterns:
+    - "(?i)(request|body|param|payload|input)"
+    - "\\{"
+  response_patterns:
+    - "(?i)(response|return|output)"
+    - "\\{"
+  endpoint_pattern: "(?i)(GET|POST|PUT|DELETE|PATCH)\\s+[/`]"
+  min_endpoints: 3
+  description: "Every endpoint must have explicit request AND response shapes"
+pagination:
+  patterns:
+    - "(?i)(cursor|pagination|page_token|next_token|offset|limit)"
+  min: 1
+  description: "Pagination strategy present"
+idempotency:
+  patterns:
+    - "(?i)(idempoten|idempotency.key|request.id|dedup)"
+  min: 1
+  description: "Idempotency mechanism present"

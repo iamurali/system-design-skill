@@ -1,0 +1,16 @@
+file_pattern: "03-entities.md"
+required_headings:
+  h1: 1
+  h2_min: 2
+required_sections:
+  - pattern: "(?i)(entit|domain.object|core.object)"
+    name: "Entity definitions"
+  - pattern: "(?i)(relationship|cardinality|association)"
+    name: "Relationships section"
+state_machines:
+  patterns:
+    - "(?i)(state.machine|lifecycle|status.*transition|state.*diagram)"
+    - "(?i)(pending|active|completed|failed|expired).*→"
+    - "→.*→"
+  min: 1
+  description: "State machine or lifecycle diagram for entities with multiple states"

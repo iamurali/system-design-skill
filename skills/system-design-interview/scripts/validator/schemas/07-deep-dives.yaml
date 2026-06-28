@@ -1,0 +1,55 @@
+file_pattern: "07-deep-dives.md"
+required_headings:
+  h1: 1
+  h2_min: 4
+deep_dives:
+  min_count: 4
+  heading_pattern: "(?i)^##\\s+(deep.dive|dive)\\s*\\d+"
+  tier_patterns:
+    workable: "(?i)(workable|tier.1|basic|naive|simple.*approach)"
+    strong: "(?i)(strong|tier.2|improved|better|enhanced)"
+    exceptional: "(?i)(exceptional|tier.3|PE.grade|optimal|advanced)"
+  all_tiers_required: true
+  curveball:
+    patterns:
+      - "(?i)(curveball|what.if|constraint.change)"
+      - "(?i)(invalidat|blast.radius|redesign.*only)"
+    required: true
+    must_contain:
+      - pattern: "(?i)(constraint|assumption|change|invalidat)"
+        name: "Named constraint change"
+      - pattern: "(?i)(blast.radius|affected|scope|only.*part)"
+        name: "Scoped blast radius"
+      - pattern: "(?i)(redesign|change|modify|switch)"
+        name: "Scoped redesign"
+breaking_point:
+  patterns:
+    - "(?i)(breaking.point|breaks.at|stops.working|limit|threshold|ceiling)"
+    - "(?i)(at.\\d+[KMBx]|beyond.\\d+|exceeds.\\d+|when.*>\\s*\\d+)"
+  min_per_dive: 1
+  description: "Specific numeric threshold where approach fails"
+resiliency:
+  patterns:
+    - "(?i)(resilien|circuit.breaker|bulkhead|retry.budget|backpressure)"
+    - "(?i)(graceful.degradation|fallback|timeout|health.check)"
+    - "(?i)(stale.while|serve.stale|degrade.*graceful)"
+  min_per_dive: 1
+  description: "Resiliency pattern with concrete config"
+depth_signals:
+  algorithm:
+    patterns:
+      - "(?i)(complexity|algorithm|data.structure|hash|tree|heap|sketch)"
+      - "(?i)(amortized|worst.case|average.case|space.complexity)"
+    name: "Algorithm internals"
+  protocol:
+    patterns:
+      - "(?i)(protocol|handshake|sequence|state.machine|consensus)"
+      - "(?i)(2PC|Paxos|Raft|gossip|heartbeat|leader.election)"
+    name: "Protocol mechanics"
+  math:
+    patterns:
+      - "(?i)(deriv|formula|equation|probability|bound|theorem)"
+      - "(?i)(epsilon|delta|sigma|log|ln|exp|integral)"
+    name: "Mathematical reasoning"
+  min_total: 3
+  description: "At least 3 depth signal blocks across all dives"

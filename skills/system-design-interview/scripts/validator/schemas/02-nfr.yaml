@@ -1,0 +1,36 @@
+file_pattern: "02-non-functional-requirements.md"
+required_headings:
+  h1: 1
+  h2_min: 3
+required_sections:
+  - pattern: "(?i)(latency|P99|P95|percentile)"
+    name: "Latency targets section"
+  - pattern: "(?i)(availability|uptime|error.budget|SLA)"
+    name: "Availability section"
+  - pattern: "(?i)(consistency|CAP|eventual|strong)"
+    name: "Consistency model section"
+latency_budget:
+  target_pattern: "(?i)P99.*?(\\d+\\.?\\d*)\\s*ms"
+  breakdown_pattern: "(?i)(\\d+\\.?\\d*)\\s*ms"
+  tolerance_percent: 10
+error_budget:
+  patterns:
+    - "(?i)(\\d+\\.?\\d*)\\s*(min|minutes|hours|sec).*(month|week|day)"
+    - "(?i)\\d+\\.\\d+%.*budget"
+    - "(?i)error.budget.*\\d+"
+  min: 1
+  description: "Concrete error budget number"
+runbook:
+  patterns:
+    - "(?i)runbook"
+    - "(?i)(on.call|oncall|incident.response|playbook)"
+    - "(?i)(step.1|1\\.|first.*detect|alert.*then)"
+  min: 1
+  description: "At least one runbook sketch"
+consistency_consequence:
+  patterns:
+    - "(?i)(user.*(may|might|will|could).*(see|experience|observe))"
+    - "(?i)(stale.*(for|up.to|within)|delay.*(of|up.to))"
+    - "(?i)(user.facing.*(effect|consequence|impact))"
+  min: 1
+  description: "Named user-facing consistency consequence"

@@ -1,0 +1,20 @@
+{
+  "name": "system-design-interview",
+  "description": "Generate Principal-Engineer-grade system design interview preparation documents. Produces 10 artifacts per problem (8 design docs + 1 Excalidraw diagram + 1 machine-verified eval report) covering requirements, NFRs, entities, API, schema, HLD, deep dives, and bottlenecks. Calibrated for PE interviews at top-tier tech companies.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Murali K"
+  },
+  "homepage": "https://github.com/iamurali/system-design-skill",
+  "repository": "https://github.com/iamurali/system-design-skill",
+  "license": "MIT",
+  "keywords": [
+    "system-design",
+    "interview",
+    "principal-engineer",
+    "architecture",
+    "distributed-systems",
+    "software-design"
+  ],
+  "skills": "skills/"
+}

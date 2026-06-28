@@ -1,0 +1,99 @@
+file_pattern: "08-bottlenecks-and-tradeoffs.md"
+required_headings:
+  h1: 1
+  h2_min: 4
+required_sections:
+  - pattern: "(?i)(bottleneck|constraint|limit)"
+    name: "Bottleneck analysis"
+  - pattern: "(?i)(tradeoff|trade.off|decision)"
+    name: "Tradeoff summary"
+  - pattern: "(?i)(coverage|building.block|sweep)"
+    name: "Coverage sweep"
+bottlenecks:
+  min_count: 6
+  heading_pattern: "(?i)^###?\\s*(?:Bottleneck\\s*)?\\d+[.:]?\\s+"
+  must_contain:
+    - pattern: "(?i)(cause|root.cause|why|because)"
+      name: "Root cause"
+    - pattern: "(?i)(mitigat|solution|fix|approach|remedy)"
+      name: "Mitigation options"
+failure_matrix:
+  patterns:
+    - "(?i)(failure.*matrix|failure.*scenario|failure.*table)"
+    - "(?i)(\\|.*failure.*\\|.*impact|\\|.*blast.*radius)"
+  min_rows: 5
+  required_columns:
+    - "(?i)failure"
+    - "(?i)(impact|blast.radius)"
+    - "(?i)(detect|monitor)"
+    - "(?i)(degrad|mitigat|recover)"
+  description: "Failure matrix with blast radius, detection, degradation, recovery"
+real_incidents:
+  patterns:
+    - "(?i)(incident|outage|post.mortem|production.*failure)"
+    - "(?i)(facebook|google|twitter|linkedin|amazon|netflix|github|uber|cloudflare)"
+    - "(?i)(outage|failure|crash|cascade)"
+  min: 3
+  description: "Named production incidents with root cause and lesson"
+anti_patterns:
+  patterns:
+    - "(?i)(anti.pattern|common.mistake|wrong.approach|pitfall|don.t)"
+  min: 3
+  description: "Common mistakes with why wrong and correct approach"
+evolution:
+  patterns:
+    - "(?i)(10x|100x|1000x|evolution|scale.*next|future|roadmap)"
+    - "(?i)(breaks.at|what.changes|migration|rebuild)"
+  min: 1
+  description: "Evolution roadmap with breaking points at scale tiers"
+tradeoff_matrix:
+  patterns:
+    - "(?i)\\|.*\\|.*\\|.*\\|"
+  min_rows: 5
+  description: "Tradeoff summary matrix with 5+ rows"
+coverage_sweep:
+  building_blocks:
+    - "dns"
+    - "load.balanc"
+    - "CDN|content.delivery"
+    - "api.design"
+    - "service.decompos"
+    - "data.storage"
+    - "cach"
+    - "blob.store"
+    - "sequencer|unique.id"
+    - "sharded.counter"
+    - "distributed.search"
+    - "messag|stream|queue"
+    - "task.schedul"
+    - "consisten|coordinat"
+    - "resilien|failure"
+    - "observab|monitor"
+    - "distributed.log"
+    - "scal|evolution"
+  min_addressed: 12
+  description: "Building blocks mentioned or explicitly excluded"
+interview_talking_points:
+  patterns:
+    - "(?i)(talking.point|interview|key.insight|PE.signal)"
+  min: 5
+  description: "Interview talking points (5-7 PE-level insights)"
+pe_rubric:
+  score_pattern: "(?i)(\\d+)/5"
+  required_dimensions: 10
+  min_average: 4.5
+  min_per_dimension: 4
+  template_patterns:
+    - "(?i)problem.reframe"
+    - "(?i)quantitative"
+    - "(?i)solution.space"
+    - "(?i)trade.off.rigor"
+    - "(?i)depth"
+    - "(?i)failure.mode"
+    - "(?i)production"
+    - "(?i)organiz"
+    - "(?i)evolution"
+    - "(?i)collaborat"
+  weakest_dimension:
+    pattern: "(?i)(weakest|lowest|improve)"
+    required: true

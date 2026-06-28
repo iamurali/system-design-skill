@@ -1,0 +1,26 @@
+file_pattern: "05-schema.md"
+required_headings:
+  h1: 1
+  h2_min: 2
+required_sections:
+  - pattern: "(?i)(schema|table|collection|store)"
+    name: "Schema definitions"
+  - pattern: "(?i)(index|access.pattern|query.pattern)"
+    name: "Index or access pattern justification"
+sharding:
+  patterns:
+    - "(?i)(shard|partition.key|partition.strategy|hash.*partition)"
+    - "(?i)(consistent.hash|range.partition|key.*distribution)"
+  min: 1
+  description: "Sharding/partitioning strategy present"
+primary_keys:
+  patterns:
+    - "(?i)(primary.key|PK|partition.key|sort.key|composite.key)"
+  min: 2
+  description: "Primary keys defined for major entities"
+access_patterns:
+  patterns:
+    - "(?i)(access.pattern|query.*pattern|read.*pattern|write.*pattern)"
+    - "(?i)(SELECT|GET|scan|lookup|fetch).*(?i)(BY|WHERE|using|via)"
+  min: 2
+  description: "Access patterns linked to indexes"

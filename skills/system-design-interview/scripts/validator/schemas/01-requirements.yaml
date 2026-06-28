@@ -1,0 +1,36 @@
+file_pattern: "01-requirements.md"
+required_headings:
+  h1: 1
+  h2_min: 3
+required_sections:
+  - pattern: "(?i)(capacity|estimation|scale)"
+    name: "Capacity estimation section"
+  - pattern: "(?i)(out.of.scope|exclusion)"
+    name: "Out-of-scope section"
+  - pattern: "(?i)(functional|requirements|key.behav)"
+    name: "Functional requirements section"
+min_counts:
+  out_of_scope_items:
+    pattern: "^\\s*[-*]\\s+"
+    section_pattern: "(?i)out.of.scope"
+    min: 3
+    description: "Out-of-scope items with reasoning"
+capacity_chain:
+  required_links:
+    - pattern: "(?i)(DAU|daily.active)"
+      name: "DAU"
+    - pattern: "(?i)(read.*(QPS|queries|req)|QPS.*read)"
+      name: "Read QPS"
+    - pattern: "(?i)(write.*(QPS|queries|req)|QPS.*write)"
+      name: "Write QPS"
+    - pattern: "(?i)(storage.*(day|daily)|daily.*storage)"
+      name: "Storage/day"
+    - pattern: "(?i)(total.*storage|storage.*total|storage.*retention)"
+      name: "Total storage"
+    - pattern: "(?i)(bandwidth|throughput|GB/s|MB/s|Gbps)"
+      name: "Bandwidth"
+reframing:
+  min: 1
+  patterns:
+    - "(?i)(reframe|hidden.requirement|non.obvious|actually.need|real.question|before.we.design)"
+    - "(?i)(do.users.need|should.we.instead|alternative.scope|the.right.problem)"
