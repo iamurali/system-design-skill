@@ -3,6 +3,10 @@ required_headings:
   h1: 1
   h2_min: 6
 required_sections:
+  - pattern: "(?i)(required.capabilit|capability.requirement)"
+    name: "Required capabilities section"
+  - pattern: "(?i)(architecture.research|research.*capabilit|options.evaluated)"
+    name: "Architecture research section"
   - pattern: "(?i)(architecture.evolution|start.cheap|evolution.*cheap)"
     name: "Start-cheap / architecture evolution section"
   - pattern: "(?i)(component.registry|component.*table)"

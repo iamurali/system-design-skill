@@ -146,9 +146,11 @@ PE is not "Staff but more." It is a qualitatively different signal:
   problems with company attribution and curveballs.
 - **[references/tradeoff-framework.md](references/tradeoff-framework.md)** --
   The 3-question method and common axis tradeoffs.
+- **[references/hld-design-protocol.md](references/hld-design-protocol.md)**
+  -- **Phase 4 primary:** forces-first HLD; capability derivation; mandatory
+  architecture research before product selection. Not a directional tech stack.
 - **[references/faang-interview-patterns.md](references/faang-interview-patterns.md)**
-  -- World-class calibration: FAANG interview flow, estimation chain, HLD
-  incremental design, company-specific emphasis. Read at Phase 1 and Phase 4.
+  -- World-class calibration for requirements and interview bar. Read at Phase 1.
 - **[assets/templates/](assets/templates/)** -- Required section skeletons per
   output file. Load the template matching the current phase before generating.
 - **[references/numbers-to-know.md](references/numbers-to-know.md)** -- Latency
@@ -163,6 +165,7 @@ PE is not "Staff but more." It is a qualitatively different signal:
 ## Exemplars
 
 Use `assets/exemplars/trending-articles-top-k` as the **primary PE-grade
-calibration exemplar** (passes validator at 100%). Use
-`assets/exemplars/in-memory-cache` for NFR/latency budget patterns. Read only
-the file matching the current phase, not the full 8-file set.
+calibration exemplar** for **process** (capabilities → research → selection).
+**Do not copy its Kafka/Flink/Redis choices** into other problems — run the
+HLD protocol for each prompt. Use `assets/exemplars/in-memory-cache` for NFR
+patterns. Read only the file matching the current phase.

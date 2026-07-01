@@ -73,14 +73,15 @@ decisions justified by read/write ratio.
 ### Phase 4: Design the Architecture (10-15 min)
 
 **Output**: `06-high-level-design.md`
+**Primary reference**: `hld-design-protocol.md` (forces-first; research before products)
 **Template**: `assets/templates/06-high-level-design.template.md`
-**References**: `building-blocks-index.md`, `tradeoff-framework.md`, `faang-interview-patterns.md`
+**Also load**: `building-blocks-index.md`, `tradeoff-framework.md`, `research-protocol.md`
 
-**Mandatory order:** Architecture Evolution (start cheap) → contested decision options →
-four flows (write, read with latency budget, failure, deploy) → component registry →
-trade-off triads.
+**Mandatory order:** Required capabilities → v0 → architecture research (2+ contested
+layers) → role-based diagram → four flows → component registry → triads.
 
-Start cheap. A single DB, a monolith, no cache. This works at small scale.
+Do **not** open with a canned stack. Derive capabilities from constraints; research
+options; then name implementations.
 
 Incrementally optimize: capacity numbers from Phase 2 reveal bottlenecks.
 Add components only when a number forces them. Each addition gets the

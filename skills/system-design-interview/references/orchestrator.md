@@ -189,24 +189,31 @@ Do NOT re-read files 01-05 in full during Phases 4-6. Use this checkpoint.
 ## Phase 4: Design the Architecture
 
 **Output**: `06-high-level-design.md`
-**Load**: `references/building-blocks-index.md`, `references/tradeoff-framework.md`,
-`references/faang-interview-patterns.md`, `assets/templates/06-high-level-design.template.md`
+**Load (in order)**:
+1. `references/hld-design-protocol.md` — **primary**; forces-first process
+2. `references/building-blocks-index.md` — capability vocabulary L0–L7
+3. `references/tradeoff-framework.md`
+4. `references/research-protocol.md` — run during Phase 4 for contested layers
+5. `assets/templates/06-high-level-design.template.md`
 
-**World-class HLD order (do not skip):**
+**Do not** start Phase 4 by naming products (Kafka, Redis, DynamoDB, etc.). Start
+with **required capabilities** derived from the context checkpoint.
 
-1. **Architecture Evolution (Start Cheap)** — v0 design that genuinely works at
-   Phase 1 numbers; v1/v2 triggered by specific bottlenecks.
-2. **Contested decision** — 2–3 options with named forces; selection as judgment.
-3. **System overview** — ASCII diagram with QPS on arrows, protocols labeled.
-4. **Flow 1: Write path** — every hop to durable storage.
-5. **Flow 2: Read path** — per-hop latency budget summing to Phase 2 P99.
-6. **Flow 3: Failure** — ≥2 component failures with degradation + stampede avoidance.
-7. **Flow 4: Deploy** — canary/rolling, schema migration, rollback.
-8. **Component Registry** — table: Component | Capacity | Failure mode | Owner.
-9. **Trade-off triads** — solves / worsens / when-to-change per major addition.
-10. **Production references** — how real systems behave, not name-drops.
+### Mandatory HLD process (from hld-design-protocol.md)
 
-Each technology choice beyond v0 must cite the **number** that forces it.
+1. **Required Capabilities** — constraint → capability → building-block layer; no product names
+2. **Architecture Evolution (v0)** — credible minimal design at 1× numbers
+3. **Architecture Research** — per contested capability: 2–3 options, forces, selection with numbers
+   - Use web / research-protocol when local references are insufficient
+   - Append research summary to `10-interview-transcript.md` if external sources used
+4. **System overview** — diagram with **roles**; implementations only after research
+5. **Flow 1–4** — write, read (latency budget), failure, deploy
+6. **Component Registry** — Role | Implementation | Capacity | Failure | Owner
+7. **Trade-off triads** — per capability added after v0
+8. **Production references** — mechanisms and incidents, not brand name-drops
+
+Each implementation choice beyond v0 must cite the **constraint number** that
+forces it and the **rejected alternative** with reason.
 
 ### Mandatory Flow Coverage
 
@@ -241,7 +248,8 @@ Every major component (not leaf utilities) in the architecture MUST have:
 |---|-----------|----------------|
 | a | Starting design valid | The "cheap" starting design genuinely handles current-scale numbers from the context checkpoint (not a strawman dismissed in one sentence). |
 | b | Components justified | Every component added beyond starting design traces to a specific bottleneck number from the checkpoint. |
-| c | Options presented | At least 1 contested decision shows 2-3 options with named forces that pick between them. |
+| c | Options presented | At least **2 contested capabilities** each show 2–3 options with named forces; selection justified by numbers. |
+| c2 | Research before products | `Required Capabilities` and `Architecture Research` sections present; diagram leads with roles, not a canned stack. |
 | d | Checkpoint consistency | Architecture handles the QPS, storage, and latency from the context checkpoint. Spot-check: do the numbers match? |
 | e | Failure flow present | At least 2 component failures are traced through the system showing degradation behavior, recovery path, and user-facing impact. |
 | f | Deploy flow present | Canary/rolling strategy, schema migration, and rollback documented. |
@@ -699,5 +707,6 @@ All references live in `references/` relative to this file.
 | `references/tradeoff-framework.md` | Phase 4 when articulating design decisions. |
 | `references/numbers-to-know.md` | Phase 1 and Phase 2 for estimation. |
 | `references/faang-interview-patterns.md` | Phase 1 and Phase 4 for world-class calibration. |
+| `references/hld-design-protocol.md` | **Phase 4 primary** — forces-first, research-driven HLD. |
 | `assets/templates/` | Each phase — load matching template before generating. |
 | `excalidraw-diagram` skill (companion) | Phase 4b (after Gate 4 passes). |

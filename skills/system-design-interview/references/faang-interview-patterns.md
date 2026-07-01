@@ -106,8 +106,8 @@ Not "eventual consistency" alone. Example: *"User may see trending list up to 60
 
 | Data class | RPO | RTO | Mechanism |
 |------------|-----|-----|-----------|
-| Engagement events | 0 (no loss) | minutes | Kafka retention + replay |
-| Top-K snapshots | 5 min | 30 sec | Redis AOF + rebuild from stream |
+| Engagement events | 0 (no loss) | minutes | Durable log + replay |
+| Top-K snapshots | 5 min | 30 sec | Materialized store rebuild from stream |
 
 ### Runbook sketch
 
@@ -117,46 +117,58 @@ One top failure scenario with detect → mitigate → recover steps (not "add mo
 
 ## HLD Phase — World-Class Architecture
 
-### 1. Start cheap (mandatory)
+**Read `hld-design-protocol.md` first.** HLD is constraint-led and
+research-driven — not a directional pick of Kafka, Redis, or Flink.
 
-Show the design that works **at current scale** before adding Kafka, Flink, etc.
+### Process (mandatory order)
 
-Example progression for trending:
+1. **Required capabilities** — map constraints to L0–L7 building blocks; no product names
+2. **Start cheap (v0)** — fewest capabilities for current numbers; credible MVP
+3. **Architecture research** — 2+ contested capabilities, 2–3 options each, forces + numbers
+4. **Compose diagram** — role labels first; implementation in parentheses after selection
+5. **Four flows** — write, read (latency budget), failure, deploy
+6. **Component registry** — Role | Implementation | Capacity | Failure | Owner
+7. **Trade-off triads** — per layer added after v0
+8. **Production evidence** — behavior and incidents, not logos
 
-| Stage | Scale trigger | Architecture |
-|-------|---------------|--------------|
-| v0 | <1K write QPS | Postgres + periodic cron aggregation |
-| v1 | >10K write QPS | Kafka buffer + single consumer |
-| v2 | >100K write QPS | Stream processor + approximate counting |
-| v3 | >500K write QPS | Sharded aggregation + push to Redis |
+### Start cheap (capability language)
 
-The v0 design must be **credible**, not a strawman dismissed in one sentence.
+Show what works at **1×** before adding async ingestion, stream processing, or
+distributed cache. Example capability progression (problem-agnostic):
 
-### 2. Four mandatory flows
+| Stage | Scale trigger | Capabilities added |
+|-------|---------------|-------------------|
+| v0 | Within single-node DB limits | Sync API + RDBMS + batch/cron aggregation |
+| v1 | Write path exceeds DB TPS | Durable write buffer (log/queue) |
+| v2 | Freshness SLA < batch interval | Stream or incremental aggregation |
+| v3 | Read QPS exceeds DB | Materialized ranked/cached serving layer |
+
+The v0 design must be **credible**, not a strawman. Thresholds come from
+`numbers-to-know.md`, not from exemplar stacks.
+
+### Four mandatory flows
 
 1. **Write path** — every hop, protocol, async vs sync
 2. **Read path** — hops with latency budget per hop (sums to Phase 2 P99)
-3. **Failure path** — ≥2 component failures: user impact, degradation, recovery, stampede avoidance
+3. **Failure path** — ≥2 components: user impact, degradation, recovery, stampede avoidance
 4. **Deploy path** — canary/rolling, schema migration, rollback
 
-### 3. Component registry
+### Component registry
 
-Every major component:
+| Role | Implementation | Capacity | Failure mode | Owner |
+|------|----------------|----------|--------------|-------|
 
-| Component | Capacity | Failure mode | Owner team |
-|-----------|----------|--------------|------------|
-| Ingestion API | 200K write QPS | Overload → 429 + queue | Product Platform |
-| Kafka cluster | 500K msg/s | Broker loss → ISR failover | Data Platform |
+Implementation column is filled **after** architecture research — may be a
+product, managed service, or first-principles component (Google-style).
 
-### 4. Trade-off triad (every major addition)
+### Trade-off triad (every capability added after v0)
 
-**Solves** / **Worsens** / **When to change** — specific to this system.
+**Solves** / **Worsens** / **When to change** — tied to constraint numbers.
 
-### 5. Production grounding
+### Production grounding
 
-Prefer: *"At LinkedIn, Samza jobs with keyed RocksDB state hold windowed aggregates; recovery from checkpoint takes 5–15 min for 50GB state"* over *"LinkedIn uses Samza."*
-
-Cite real incidents when relevant (Twitter trending manipulation, Facebook cache stampede, etc.).
+Prefer mechanism + failure mode over brand: *"Keyed stream state with
+checkpoint recovery; 50GB state → 5–15 min restore"* not *"we use Flink."*
 
 ---
 
@@ -196,7 +208,7 @@ For each of 4+ components:
 | **Google** | First-principles component design; global scale; data modeling rigor; skepticism of canned answers |
 | **Amazon** | Operational excellence; blast radius; explicit assumptions; service ownership; failure recovery |
 | **Meta** | Efficiency at scale; cache hierarchy; real-time social graph constraints |
-| **LinkedIn** | Kafka/Samza pipelines; feed freshness; professional graph segmentation |
+| **LinkedIn** | Stream aggregation pipelines; feed freshness; professional graph segmentation |
 | **Microsoft** | Enterprise multi-tenancy; regional compliance; hybrid cloud |
 | **Databricks** | Data platform integration; lakehouse; stream-batch unification |
 
@@ -207,7 +219,7 @@ When user names a company, read `company-profiles.md` and weight the correspondi
 ## Anti-Patterns That Fail FAANG Loops
 
 1. Architecture before numbers
-2. Kafka/Redis as default without scale justification
+2. Product-led HLD (Kafka/Redis/Flink defaults) without capability derivation or research
 3. Single design with no alternatives for contested decisions
 4. No failure degradation story ("we'll add replicas")
 5. Deep dives that repeat the HLD diagram
