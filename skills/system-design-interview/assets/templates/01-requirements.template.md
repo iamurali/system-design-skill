@@ -4,6 +4,16 @@
 
 Before we design: [question that could change architecture]. **Decision:** [chosen scope and why].
 
+## Early Problem Shape (provisional)
+
+| Signal | Value |
+|--------|-------|
+| Provisional archetype (A1–A9) | |
+| Dominant force (one sentence) | |
+| Read:write ratio | :1 |
+
+Refined in Phase 4 HLD; drives estimation emphasis here.
+
 ### Hidden Requirements Surfaced
 
 1. [Requirement interviewer did not state] — [why it matters]

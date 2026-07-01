@@ -50,15 +50,18 @@ After all 6 phases:
    `system-design/` relative to the user's project root) to check for slug
    collisions. Derive `<problem-name>` as a short kebab-case slug from the
    prompt (e.g., "url-shortener", "distributed-cache", "news-feed").
-4. **Load the phase template** from `assets/templates/` for the current phase
+4. **Load the phase skill** from `references/` (e.g., `requirements-skill.md` for
+   Phase 1, `hld-skill.md` for Phase 4). Read it before the template.
+5. **Load the phase template** from `assets/templates/` for the current phase
    (e.g., `01-requirements.template.md`). Fill every required section; do not
    skip headings the template defines.
-5. Read one exemplar file (not all 8) from `assets/exemplars/` matching the
-   current phase when calibrating output quality. Exemplars must pass the
-   validator — use them for depth and tone, templates for structure.
-6. If the user names a company, read `references/company-profiles.md` and
+6. Read one exemplar file (not all 8) from `assets/exemplars/` matching the
+   current phase **and provisional shape** when calibrating output quality.
+   Exemplars must pass the validator — use them for depth and tone, templates
+   for structure. **Never default to A7 trending for non-aggregate prompts.**
+7. If the user names a company, read `references/company-profiles.md` and
    apply the calibration table in `faang-interview-patterns.md`.
-7. If the user asks "what should I practice," read `references/problem-bank.md`.
+8. If the user asks "what should I practice," read `references/problem-bank.md`.
 
 Do NOT preload all 7 reference files. Load just-in-time per phase.
 
@@ -75,22 +78,35 @@ Interviewer must be blind to self-scores and phase gate PASS/FAIL claims.
 ## Phase 1: Frame the Problem
 
 **Output**: `01-requirements.md`
-**Load**: `references/numbers-to-know.md`, `references/faang-interview-patterns.md`,
-`assets/templates/01-requirements.template.md`
+**Load (in order — do not skip):**
+1. `references/requirements-skill.md` — **primary** problem-agnostic requirements skill
+2. `references/numbers-to-know.md`
+3. `references/faang-interview-patterns.md`
+4. `references/hld-archetypes.md` — provisional shape classification only
+5. `assets/templates/01-requirements.template.md`
 
-Follow the template exactly. This phase combines **functional requirements and
-the full capacity estimation chain** — FAANG interviews treat scale as part of
-requirements, not a separate afterthought.
+**Exemplar (optional, shape-matched only):**
+
+| If provisional shape is… | Read `01-requirements.md` |
+|--------------------------|---------------------------|
+| A3 Read-scaled | `assets/exemplars/in-memory-cache/` |
+| A7 Aggregate / top-K | `assets/exemplars/trending-articles-top-k/` |
+| A1 CRUD / other | **No requirements exemplar** — skill + template only |
+
+Follow `requirements-skill.md` and the template. This phase combines
+**functional requirements and the full capacity estimation chain** — FAANG
+interviews treat scale as part of requirements, not a separate afterthought.
 
 - State functional requirements with company-scale context (2–4 core features).
+- **Early problem shape**: provisional archetype + dominant force + read:write ratio.
 - **Problem reframing**: question the prompt; surface hidden requirements.
 - **Capacity estimation chain** (all links required):
   DAU → read QPS → write QPS → storage/day → total storage → bandwidth →
-  server count. Show assumptions and math inline.
+  server count. Show assumptions and math inline. Use shape-aware component load
+  rows only when the archetype requires them.
 - **Growth trajectory**: 1×, 10×, 100× inputs and what breaks first at each tier.
 - **Success metrics (SLIs)**: 2–3 measurable signals before architecture.
 - Explicit out-of-scope: minimum 3 items, each with one-line reasoning.
-- For data-intensive problems: ranking signals, time windows, personalization scope.
 
 ### Gate 1 -- evaluate before proceeding
 
@@ -110,9 +126,15 @@ requirements, not a separate afterthought.
 ## Phase 2: Set the Constraints
 
 **Output**: `02-non-functional-requirements.md`
-**Load**: `references/numbers-to-know.md`, `assets/templates/02-non-functional-requirements.template.md`
+**Load (in order):**
+1. `references/nfr-skill.md` — **primary** NFR derivation skill
+2. `references/numbers-to-know.md`
+3. `assets/templates/02-non-functional-requirements.template.md`
+
+**Exemplar (optional, shape-matched):** same table as Phase 1 (`02-non-functional-requirements.md`).
 
 NFRs must **trace to Phase 1 numbers**. Do not invent a separate scale story.
+Follow `nfr-skill.md` for shape-aware latency paths and consistency tables.
 
 - Percentile latency targets (P50/P95/P99/P99.9) with latency budget breakdown
   that sums to P99 (±10%).
@@ -137,7 +159,23 @@ NFRs must **trace to Phase 1 numbers**. Do not invent a separate scale story.
 ## Phase 3: Define the Interface
 
 **Output**: `03-entities.md`, `04-api-design.md`, `05-schema.md`
-**Load**: `references/building-blocks-index.md` (for storage options)
+**Load (in order):**
+1. `references/interface-skill.md` — **primary** unified entities/API/schema skill
+2. `references/building-blocks-index.md` (L4 storage vocabulary)
+3. `assets/templates/03-entities.template.md`
+4. `assets/templates/04-api-design.template.md`
+5. `assets/templates/05-schema.template.md`
+
+**Exemplar (optional, shape-matched):**
+
+| Shape | Read |
+|-------|------|
+| A3 | `assets/exemplars/in-memory-cache/03–05` |
+| A7 | `assets/exemplars/trending-articles-top-k/03–05` |
+| A1 / other | **Skill + templates only** |
+
+Complete **one design pass** per `interface-skill.md` — access patterns from
+Phase 1–2 drive all three files.
 
 Entities:
 - Core domain objects, relationships, cardinality, lifecycle.
@@ -319,7 +357,21 @@ minor, fix locally and proceed without Research.
 ## Phase 5: Go Deep
 
 **Output**: `07-deep-dives.md`
-**Load**: `references/reasoning-engine.md` (curveball protocol, lines 228-244)
+**Load (in order):**
+1. `references/deep-dive-skill.md` — **primary** depth-on-demand skill
+2. `references/reasoning-engine.md` (curveball protocol, lines 228-244)
+3. `assets/templates/07-deep-dives.template.md`
+
+**Exemplar (optional, shape-matched):**
+
+| Shape | Read `07-deep-dives.md` |
+|-------|-------------------------|
+| A3 | `assets/exemplars/in-memory-cache/` |
+| A7 | `assets/exemplars/trending-articles-top-k/` |
+| A1 / other | **Skill + template only** |
+
+Follow `deep-dive-skill.md` for component selection by archetype — do not default
+to streaming/sketch dives unless Phase 4 classification requires them.
 
 - **Minimum 4 deep dives** (recommend 5-6 for complex systems) on the most
   fragile or interesting components from Phase 4.
@@ -393,9 +445,18 @@ dives.
 ## Phase 6: Stress-Test and Synthesize
 
 **Output**: `08-bottlenecks-and-tradeoffs.md`
-**Load**: `references/principal-engineer-bar.md`, `references/building-blocks-index.md`
-Also load `references/reasoning-engine.md` lines 152-244 (failure modes,
-self-check, coverage sweep).
+**Load (in order):**
+1. `references/bottlenecks-skill.md` — **primary** synthesis skill
+2. `references/principal-engineer-bar.md`
+3. `references/building-blocks-index.md`
+4. `references/tradeoff-framework.md`
+5. `references/reasoning-engine.md` lines 152-244 (failure modes, coverage sweep)
+6. `assets/templates/08-bottlenecks-and-tradeoffs.template.md`
+
+**Exemplar (optional, shape-matched):** same table as Phase 5 (`08-bottlenecks-and-tradeoffs.md`).
+
+Follow `bottlenecks-skill.md` — bottlenecks must trace to checkpoint numbers,
+not generic stack assumptions.
 
 - Bottleneck analysis: **minimum 6 bottlenecks**, each with root cause, 2-3
   mitigations, and a real-world incident or analogy.

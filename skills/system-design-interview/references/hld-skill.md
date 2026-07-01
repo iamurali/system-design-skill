@@ -20,6 +20,7 @@ classification and `assets/templates/06-high-level-design.template.md` for outpu
 
 Before drawing boxes:
 
+0. Confirm **Early Problem Shape** from Phase 1 (provisional archetype) — refine here.
 1. Read the **context checkpoint** (scale, NFRs, access patterns).
 2. Complete **Problem Shape Classification** (Section 1).
 3. Open the matching **archetype card** in `hld-archetypes.md`.

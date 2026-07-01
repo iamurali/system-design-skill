@@ -9,8 +9,8 @@ required_sections:
     name: "Capacity estimation section"
   - pattern: "(?i)(out.of.scope|exclusion)"
     name: "Out-of-scope section"
-  - pattern: "(?i)(functional|requirements|key.behav)"
-    name: "Functional requirements section"
+  - pattern: "(?i)(provisional.archetype|early.problem.shape|dominant.force|read:write)"
+    name: "Early problem shape section"
   - pattern: "(?i)(10x|100x|growth|trajectory)"
     name: "Growth trajectory section"
 min_counts:

@@ -18,7 +18,7 @@ compatibility: >-
   stdlib only. Excalidraw diagram rendering requires uv + Playwright (optional).
 metadata:
   author: Murali K
-  version: "1.2.0"
+  version: "1.3.0"
   repository: https://github.com/iamurali/system-design-skill
 ---
 
@@ -123,6 +123,23 @@ PE is not "Staff but more." It is a qualitatively different signal:
 - **No complexity for its own sake.** The cheapest design that meets the
   constraints wins. Justify every added component.
 
+## Phase skills (read at each phase)
+
+Every phase has a **problem-agnostic skill** (like Phase 4 HLD). Load the skill
+for the current phase before the template.
+
+| Phase | Output | Primary skill |
+|-------|--------|---------------|
+| 1 | `01-requirements.md` | `references/requirements-skill.md` |
+| 2 | `02-non-functional-requirements.md` | `references/nfr-skill.md` |
+| 3 | `03–05` entities, API, schema | `references/interface-skill.md` |
+| 4 | `06-high-level-design.md` | `references/hld-skill.md` |
+| 5 | `07-deep-dives.md` | `references/deep-dive-skill.md` |
+| 6 | `08-bottlenecks-and-tradeoffs.md` | `references/bottlenecks-skill.md` |
+
+**Exemplars are shape-matched only** — see orchestrator tables per phase. Never
+default to the A7 trending exemplar for CRUD prompts.
+
 ## References (all relative to this skill directory)
 
 - **[references/orchestrator.md](references/orchestrator.md)** -- The
@@ -146,10 +163,20 @@ PE is not "Staff but more." It is a qualitatively different signal:
   problems with company attribution and curveballs.
 - **[references/tradeoff-framework.md](references/tradeoff-framework.md)** --
   The 3-question method and common axis tradeoffs.
-- **[references/hld-skill.md](references/hld-skill.md)** — **Phase 4 entry point:**
-  problem-agnostic HLD (classify shape → capabilities → research → compose).
-- **[references/hld-archetypes.md](references/hld-archetypes.md)** — CRUD, feed,
-  cache, fanout, aggregate/top-K, etc. Pick archetype before diagramming.
+- **[references/requirements-skill.md](references/requirements-skill.md)** —
+  Phase 1: reframe → shape → estimate → SLIs → out-of-scope.
+- **[references/nfr-skill.md](references/nfr-skill.md)** — Phase 2: latency
+  budget, error budget, consistency, durability from Phase 1 numbers.
+- **[references/interface-skill.md](references/interface-skill.md)** — Phase 3:
+  access patterns → entities → API → schema in one pass.
+- **[references/hld-skill.md](references/hld-skill.md)** — Phase 4: classify
+  shape → capabilities → research → compose.
+- **[references/deep-dive-skill.md](references/deep-dive-skill.md)** — Phase 5:
+  pick fragile components → three tiers → curveballs.
+- **[references/bottlenecks-skill.md](references/bottlenecks-skill.md)** —
+  Phase 6: bottlenecks, failure matrix, evolution, coverage sweep.
+- **[references/hld-archetypes.md](references/hld-archetypes.md)** — A1–A9
+  shapes; used from Phase 1 (provisional) through Phase 4 (final).
 - **[references/faang-interview-patterns.md](references/faang-interview-patterns.md)**
   -- World-class calibration for requirements and interview bar. Read at Phase 1.
 - **[assets/templates/](assets/templates/)** -- Required section skeletons per
