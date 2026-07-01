@@ -1,19 +1,22 @@
-# Requirements Skill — Problem-Agnostic Framing & Scale
+# Requirements Skill — Problem-Agnostic Framing
 
-This is the **complete Phase 1 skill**. It applies to every system design
-problem before any interface or architecture work.
+This is the **complete Phase 1 skill**. It defines **what** the system does and
+**who** it serves — not how fast or how big (those are Phase 2 NFRs).
 
 **The requirements skill does not assume a tech stack or archetype outcome.** It
-prescribes a **reasoning loop** that produces numbers, scope, and forces that
-every later phase traces back to.
+prescribes a **reasoning loop** that produces scope and forces that Phase 2
+quantifies.
 
 ```
-Reframe → early shape → scope FRs → estimate by forces → SLIs → out-of-scope
+Reframe → early shape → scope FRs → scale assumptions → SLIs → out-of-scope
 ```
 
 Read this file at the start of Phase 1. Pair with
-`assets/templates/01-requirements.template.md` for output shape and
-`references/numbers-to-know.md` for plausibility checks.
+`assets/templates/01-requirements.template.md`.
+
+**Capacity estimation (QPS, storage, bandwidth, server count) belongs in Phase 2**
+(`nfr-skill.md`). Phase 1 records **inputs only** — DAU, actions/day, object
+size, retention, peak factor.
 
 ---
 
@@ -27,10 +30,9 @@ Before listing features:
 3. Complete **Early Problem Shape** (Section 2) — provisional archetype from
    `hld-archetypes.md` (refined in Phase 4).
 4. Scope **2–4 core FRs** tied to the dominant access pattern.
-5. Run the **full capacity chain** with shape-aware emphasis (Section 4).
-6. State **1×, 10×, 100×** and what breaks first at each tier.
-7. Define **2–3 SLIs** measurable before boxes exist.
-8. List **≥3 out-of-scope** items with one-line reasoning each.
+5. Record **scale assumptions** (Section 4) — inputs for Phase 2 math.
+6. Define **2–3 SLIs** measurable before boxes exist.
+7. List **≥3 out-of-scope** items with one-line reasoning each.
 
 ---
 
@@ -70,13 +72,13 @@ Minimum **1** hidden requirement with why it matters architecturally.
 
 ## Section 2: Early Problem Shape (provisional)
 
-Classify **before** deep design. Phase 4 will refine; Phase 1 sets estimation
-emphasis.
+Classify **before** deep design. Phase 4 will refine; Phase 2 will quantify using
+this shape.
 
 Use the quick classifier in `hld-archetypes.md`:
 
-| Provisional archetype | Estimation emphasis | Typical read:write |
-|-----------------------|---------------------|-------------------|
+| Provisional archetype | Phase 2 estimation emphasis | Typical read:write |
+|-----------------------|----------------------------|-------------------|
 | A1 Point CRUD | GET QPS, object size, retention | Often read-heavy |
 | A2 Feed / timeline | Fanout factor, list size, cursor depth | Read-heavy |
 | A3 Read-scaled | Cache working set, miss rate | Very read-heavy |
@@ -87,8 +89,8 @@ Use the quick classifier in `hld-archetypes.md`:
 | A8 Media / object | Blob size, CDN bandwidth | Bandwidth-bound |
 | A9 Ledger / coordination | TPS, invariant checks | Write with strong consistency |
 
-**Dominant force (one sentence):** e.g. *"Serve 200K read QPS at 30ms P99 on
-key lookup"* or *"Ingest 50K events/s without loss."*
+**Dominant force (one sentence):** qualitative — e.g. *"Optimize read path at
+LinkedIn scale"* or *"Absorb viral write spikes without loss."*
 
 **Read:write ratio:** state explicitly — drives Phase 2 latency path and Phase 3
 index strategy.
@@ -118,59 +120,28 @@ Rules:
 
 ---
 
-## Section 4: Capacity Estimation (shape-aware)
+## Section 4: Scale Assumptions (inputs only)
 
-### Universal chain (all problems)
+Record **inputs** for Phase 2 — do **not** derive QPS, storage, or server count
+here.
 
-Every design must show **all links** with inline math:
+| Parameter | Value | Rationale |
+|-----------|-------|-----------|
+| DAU (or MAU) | | |
+| Actions/user/day (read) | | |
+| Actions/user/day (write) | | |
+| Avg object / response size | | |
+| Retention | | days |
+| Peak factor | | × average (justify) |
 
-```
-DAU (or MAU)
-  → actions/user/day (read and write separate)
-  → average read QPS, average write QPS
-  → peak QPS (state peak factor: 2–10×, justify)
-  → storage/day (writes × object size)
-  → total storage (× retention)
-  → read bandwidth (peak read QPS × response size)
-  → write bandwidth (peak write QPS × request size)
-  → server count (peak QPS ÷ per-node capacity from numbers-to-know.md)
-```
-
-Cross-check orders of magnitude against `numbers-to-know.md`.
-
-### Shape-specific extensions
-
-Add rows to **Component Load Summary** only when the shape needs them:
-
-| Shape | Extra rows to estimate |
-|-------|------------------------|
-| A1 CRUD | DB connections, cache working set |
-| A2 Feed | Fanout writes or merge reads per request |
-| A3 Cache | Memory per node, hit ratio target |
-| A5/A6 Fanout | Messages per write, connection count |
-| A7 Aggregate | Events/s, segment cardinality, sketch/state size |
-| A8 Media | Egress GB/s, multipart upload rate |
-| A9 Ledger | Contention TPS, audit log growth |
-
-**Do not** add Kafka/stream rows for A1 CRUD at 500 write QPS — that is a Phase 4
-decision, not a requirements default.
-
-### Growth trajectory (mandatory)
-
-| Tier | Scale input | What breaks first |
-|------|-------------|-------------------|
-| 1× (launch) | From assumptions | [first constraint] |
-| 10× | Multiply DAU/QPS | [constraint + symptom] |
-| 100× | | |
-
-Breaking constraints must be **specific** ("single primary DB connection pool")
-not vague ("scale issues").
+Optional qualitative note: *"Expect read-heavy (~20:1)"* — Phase 2 proves it with
+math.
 
 ---
 
 ## Section 5: Success Metrics (SLIs)
 
-Define **2–3** metrics **before** architecture:
+Define **2–3** metrics **before** architecture (targets may be refined in Phase 2):
 
 | Metric | Target | Type | Why it matters |
 |--------|--------|------|----------------|
@@ -204,10 +175,9 @@ Bad: *"ML — out of scope."* (no reasoning)
 ## Phase 1 quality signals (PE bar)
 
 - **Reframes before listing features** — shows judgment, not transcription.
-- **Separate read and write QPS** — never a single "QPS" number.
-- **Peak factor justified** — business hours, viral events, batch jobs.
-- **Growth tier names a first breaker** — proves you see evolution early.
+- **Read-heavy vs write-heavy stated** — even before QPS math in Phase 2.
 - **Shape stated** — prevents defaulting to streaming stack in later phases.
+- **No premature architecture** — no QPS-derived component rows here.
 
 ---
 
@@ -225,9 +195,12 @@ Load **one** file for tone, matched to provisional shape:
 
 ## Handoff to Phase 2
 
-Phase 2 NFRs **must trace** to numbers in this file. Carry forward:
+Phase 2 (`nfr-skill.md`) derives the **full capacity chain** from assumptions
+above, then sets latency, availability, consistency, and durability targets.
 
-- Peak read QPS, peak write QPS, total storage
-- P99 latency **candidate** (refined in Phase 2 with budget)
+Carry forward:
+
+- Scale assumptions table
+- Provisional archetype + dominant force + read:write ratio
 - Consistency **hint** from reframing (exact vs approximate)
-- Provisional archetype + dominant force
+- SLI candidates (quantified in Phase 2)

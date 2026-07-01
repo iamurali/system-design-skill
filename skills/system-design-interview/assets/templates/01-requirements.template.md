@@ -12,7 +12,7 @@ Before we design: [question that could change architecture]. **Decision:** [chos
 | Dominant force (one sentence) | |
 | Read:write ratio | :1 |
 
-Refined in Phase 4 HLD; drives estimation emphasis here.
+Refined in Phase 4 HLD; drives estimation emphasis in Phase 2.
 
 ### Hidden Requirements Surfaced
 
@@ -29,45 +29,19 @@ Refined in Phase 4 HLD; drives estimation emphasis here.
 
 Scope to **2–4 core features**. State read-heavy vs write-heavy ratio explicitly.
 
-## Capacity Estimation
+## Scale Assumptions (inputs for Phase 2)
 
-### Assumptions
+**Do not derive QPS here** — the full capacity chain lives in
+`02-non-functional-requirements.md`. Record inputs only.
 
 | Parameter | Value | Rationale |
 |-----------|-------|-----------|
-| DAU | | |
+| DAU (or MAU) | | |
 | Actions/user/day (read) | | |
 | Actions/user/day (write) | | |
-| Avg object size | | |
+| Avg object / response size | | |
 | Retention | | days |
 | Peak factor | | × average (justify) |
-
-### Estimation Chain
-
-```
-DAU = ___
-Read QPS  = DAU × reads/user/day ÷ 86,400 = ___ avg → ___ peak
-Write QPS = DAU × writes/user/day ÷ 86,400 = ___ avg → ___ peak
-Storage/day = writes/day × object_size = ___
-Total storage = storage/day × retention = ___
-Read bandwidth  = peak_read_QPS × response_size = ___
-Write bandwidth = peak_write_QPS × request_size = ___
-Server count = peak_QPS ÷ per_server_QPS (from numbers-to-know.md) = ___
-```
-
-### Component Load Summary
-
-| Component | Peak load | Notes |
-|-----------|-----------|-------|
-| | | |
-
-### Growth Trajectory
-
-| Tier | DAU / QPS | What breaks first |
-|------|-----------|-------------------|
-| 1× (launch) | | |
-| 10× | | |
-| 100× | | |
 
 ## Success Metrics (SLIs)
 

@@ -131,7 +131,7 @@ Minimum **2 contested capabilities** for any non-trivial problem. Trivial CRUD a
 
 - **Boxes = roles** (Query API, Primary store, Read cache, Write buffer).
 - **Implementations** go in registry table or small parentheses — not the main narrative.
-- **Label edges:** protocol, sync/async, approximate QPS from Phase 1.
+- **Label edges:** protocol, sync/async, approximate QPS from Phase 2.
 - **Do not** default to a pipeline shape unless classification says write-buffer + async compute.
 
 Pick diagram topology from archetype (see `hld-archetypes.md`):

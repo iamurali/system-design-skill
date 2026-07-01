@@ -775,8 +775,8 @@ def validate_hld_options(content: str, schema: dict) -> list[CheckResult]:
 
 
 FILE_VALIDATORS = {
-    "01-requirements.md": [validate_capacity_chain, validate_reframing],
-    "02-non-functional-requirements.md": [validate_latency_budget, validate_error_budget, validate_runbook, validate_consistency_consequence],
+    "01-requirements.md": [validate_reframing],
+    "02-non-functional-requirements.md": [validate_capacity_chain, validate_latency_budget, validate_error_budget, validate_runbook, validate_consistency_consequence],
     "03-entities.md": [validate_state_machines],
     "04-api-design.md": [validate_api_shapes],
     "05-schema.md": [validate_sharding],

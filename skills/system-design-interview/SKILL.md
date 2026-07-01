@@ -18,7 +18,7 @@ compatibility: >-
   stdlib only. Excalidraw diagram rendering requires uv + Playwright (optional).
 metadata:
   author: Murali K
-  version: "1.3.0"
+  version: "1.3.1"
   repository: https://github.com/iamurali/system-design-skill
 ---
 
@@ -113,7 +113,7 @@ PE is not "Staff but more." It is a qualitatively different signal:
 
 - **No name-dropping.** Every technology choice gets the trade-off triad:
   solves / worsens / when-to-change.
-- **No design before numbers.** Capacity estimation precedes architecture.
+- **No design before numbers.** Phase 2 capacity estimation precedes interface and architecture.
 - **No vague boxes.** If you cannot write the request, response, and primary
   key, the component is guesswork.
 - **No infinite uptime.** Every component fails. State the degradation story.
@@ -131,7 +131,7 @@ for the current phase before the template.
 | Phase | Output | Primary skill |
 |-------|--------|---------------|
 | 1 | `01-requirements.md` | `references/requirements-skill.md` |
-| 2 | `02-non-functional-requirements.md` | `references/nfr-skill.md` |
+| 2 | `02-non-functional-requirements.md` | `references/nfr-skill.md` (+ capacity estimation) |
 | 3 | `03–05` entities, API, schema | `references/interface-skill.md` |
 | 4 | `06-high-level-design.md` | `references/hld-skill.md` |
 | 5 | `07-deep-dives.md` | `references/deep-dive-skill.md` |
@@ -164,9 +164,9 @@ default to the A7 trending exemplar for CRUD prompts.
 - **[references/tradeoff-framework.md](references/tradeoff-framework.md)** --
   The 3-question method and common axis tradeoffs.
 - **[references/requirements-skill.md](references/requirements-skill.md)** —
-  Phase 1: reframe → shape → estimate → SLIs → out-of-scope.
-- **[references/nfr-skill.md](references/nfr-skill.md)** — Phase 2: latency
-  budget, error budget, consistency, durability from Phase 1 numbers.
+  Phase 1: reframe → shape → FRs → scale assumptions → SLIs → out-of-scope.
+- **[references/nfr-skill.md](references/nfr-skill.md)** — Phase 2: capacity
+  chain → latency budget → error budget → consistency → durability → ops.
 - **[references/interface-skill.md](references/interface-skill.md)** — Phase 3:
   access patterns → entities → API → schema in one pass.
 - **[references/hld-skill.md](references/hld-skill.md)** — Phase 4: classify

@@ -25,7 +25,7 @@ requires it.
 
 ## Phase 3 entry checklist
 
-1. List **top 3–5 access patterns** from Phase 1 FRs with QPS from capacity chain.
+1. List **top 3–5 access patterns** from Phase 1 FRs with QPS from Phase 2 capacity chain.
 2. For each pattern: read or write? Latency budget from Phase 2?
 3. Define **entities** with cardinality and lifecycle.
 4. Design **APIs** — every endpoint has request **and** response shape.

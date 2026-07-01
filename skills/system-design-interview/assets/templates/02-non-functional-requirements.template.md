@@ -1,5 +1,36 @@
 # Non-Functional Requirements — [Problem Name]
 
+## Capacity Estimation
+
+Derived from **Scale Assumptions** in `01-requirements.md`. Show all math inline.
+
+### Estimation Chain
+
+```
+DAU = ___ (from Phase 1)
+Read QPS  = DAU × reads/user/day ÷ 86,400 = ___ avg → ___ peak
+Write QPS = DAU × writes/user/day ÷ 86,400 = ___ avg → ___ peak
+Storage/day = writes/day × object_size = ___
+Total storage = storage/day × retention = ___
+Read bandwidth  = peak_read_QPS × response_size = ___
+Write bandwidth = peak_write_QPS × request_size = ___
+Server count = peak_QPS ÷ per_server_QPS (from numbers-to-know.md) = ___
+```
+
+### Component Load Summary
+
+| Component | Peak load | Notes |
+|-----------|-----------|-------|
+| | | |
+
+### Growth Trajectory
+
+| Tier | DAU / QPS | What breaks first |
+|------|-----------|-------------------|
+| 1× (launch) | | |
+| 10× | | |
+| 100× | | |
+
 ## Latency Targets
 
 | Percentile | Target | Path |

@@ -1,5 +1,58 @@
 # Non-Functional Requirements — Trending Articles / Top-K
 
+## Capacity Estimation
+
+Derived from **Scale Assumptions** in `01-requirements.md`.
+
+### Estimation Chain
+
+```
+DAU = 200M
+
+Read QPS (Trending API):
+  200M DAU × 20 trending reads/day ÷ 86,400 = 46K avg read QPS
+  Peak read QPS = 46K × 5 = 230K read QPS
+
+Write QPS (Event ingestion):
+  200M × 10 impressions × 5% engagement = 100M events/day
+  Avg write QPS = 100M ÷ 86,400 = 1.2K write QPS
+  Peak write QPS = 1.2K × 5 = 6K write QPS (engagement only)
+  With dwell pings + multi-surface: peak write QPS ≈ 50K write QPS
+
+Storage/day:
+  100M events/day × 500 B = 50 GB/day raw events
+
+Total storage (7-day retention):
+  50 GB/day × 7 = 350 GB Kafka + 30 GB aggregation state (sketches, top-K)
+
+Read bandwidth:
+  230K read QPS × 5 KB response = 1.15 GB/s peak read bandwidth
+
+Write bandwidth:
+  50K write QPS × 500 B = 25 MB/s peak write bandwidth
+
+Server count (API tier):
+  230K peak read QPS ÷ 10K QPS per API node = 24 nodes (+ 2× for HA → 48 API nodes)
+```
+
+### Component Load Summary
+
+| Component | Peak load | Notes |
+|-----------|-----------|-------|
+| Event ingestion API | 50K write QPS | Validate, dedupe, produce to Kafka |
+| Kafka | 50K msg/s | Partition by `content_id` |
+| Stream processor | 50K events/s | Sketch + top-K per segment |
+| Redis writes | 2K QPS | Batched top-K pushes per segment |
+| Trending read API | 230K read QPS | >99% cache hit on Redis |
+
+### Growth Trajectory
+
+| Tier | Scale | First constraint |
+|------|-------|------------------|
+| 1× (launch) | 50K write QPS, 230K read QPS | Single Postgres aggregation viable for writes <1K QPS only |
+| 10× | 500K write QPS, 2.3M read QPS | Sketch memory + hot Kafka partitions |
+| 100× | 5M write QPS, 23M read QPS | Global merge of top-K; Redis memory per segment |
+
 ## Latency Targets
 
 | Percentile | Trending Read API | Event Ingestion (accept) |

@@ -93,18 +93,18 @@ Interviewer must be blind to self-scores and phase gate PASS/FAIL claims.
 | A7 Aggregate / top-K | `assets/exemplars/trending-articles-top-k/` |
 | A1 CRUD / other | **No requirements exemplar** — skill + template only |
 
-Follow `requirements-skill.md` and the template. This phase combines
-**functional requirements and the full capacity estimation chain** — FAANG
-interviews treat scale as part of requirements, not a separate afterthought.
+Follow `requirements-skill.md` and the template. Phase 1 covers **what** the
+system does: reframing, functional requirements, scale **assumptions** (inputs
+only), SLIs, and out-of-scope.
+
+**Capacity estimation** (QPS, storage, bandwidth, server count) is Phase 2 —
+see `nfr-skill.md`. FAANG interviews still do math early (minutes 5–15), but it
+belongs in NFRs taxonomically and in our artifact split.
 
 - State functional requirements with company-scale context (2–4 core features).
 - **Early problem shape**: provisional archetype + dominant force + read:write ratio.
 - **Problem reframing**: question the prompt; surface hidden requirements.
-- **Capacity estimation chain** (all links required):
-  DAU → read QPS → write QPS → storage/day → total storage → bandwidth →
-  server count. Show assumptions and math inline. Use shape-aware component load
-  rows only when the archetype requires them.
-- **Growth trajectory**: 1×, 10×, 100× inputs and what breaks first at each tier.
+- **Scale assumptions**: DAU, actions/user/day, object size, retention, peak factor.
 - **Success metrics (SLIs)**: 2–3 measurable signals before architecture.
 - Explicit out-of-scope: minimum 3 items, each with one-line reasoning.
 
@@ -112,11 +112,11 @@ interviews treat scale as part of requirements, not a separate afterthought.
 
 | # | Criterion | Pass condition |
 |---|-----------|----------------|
-| a | Capacity chain complete | All links: DAU, read QPS, write QPS, storage/day, total storage, bandwidth, server count. |
-| b | Reframing present | At least 1 problem reframing or hidden requirement (not just clarifications). |
+| a | Reframing present | At least 1 problem reframing or hidden requirement (not just clarifications). |
+| b | Scale assumptions | DAU (or MAU), read/write actions per user, object size, retention, peak factor stated. |
 | c | Out-of-scope coverage | At least 3 out-of-scope items, each with one-line reasoning. |
-| d | Numbers plausibility | Cross-check against `numbers-to-know.md`. Order-of-magnitude correct. |
-| e | Growth trajectory | 10× and 100× scale inputs stated with first breaking constraint. |
+| d | Early problem shape | Provisional archetype + read:write ratio (or dominant force) stated. |
+| e | FR scope | 2–4 core functional requirements with access patterns implied. |
 
 **If any criterion fails**: identify the specific gap, fix only that section of
 `01-requirements.md`, re-evaluate. Max 2 iterations.
@@ -133,9 +133,14 @@ interviews treat scale as part of requirements, not a separate afterthought.
 
 **Exemplar (optional, shape-matched):** same table as Phase 1 (`02-non-functional-requirements.md`).
 
-NFRs must **trace to Phase 1 numbers**. Do not invent a separate scale story.
-Follow `nfr-skill.md` for shape-aware latency paths and consistency tables.
+NFRs must **trace to Phase 1 assumptions**. Do not invent a separate scale story.
+Follow `nfr-skill.md` — **capacity estimation first**, then latency, availability,
+consistency, durability, security, and ops.
 
+- **Capacity estimation chain** (all links required):
+  DAU → read QPS → write QPS → storage/day → total storage → bandwidth →
+  server count. Show assumptions and math inline. Component load summary and
+  growth trajectory (1×, 10×, 100×) with first breaking constraint.
 - Percentile latency targets (P50/P95/P99/P99.9) with latency budget breakdown
   that sums to P99 (±10%).
 - Availability with SRE error budget math (concrete downtime per month).
@@ -149,10 +154,13 @@ Follow `nfr-skill.md` for shape-aware latency paths and consistency tables.
 
 | # | Criterion | Pass condition |
 |---|-----------|----------------|
-| a | Latency budget sums | Breakdown components sum to the stated P99 target (±10%). |
-| b | Error budget concrete | Produces a specific number (e.g., "22 min downtime/month at 99.95%"). |
-| c | Consistency consequence | Names the user-facing effect (e.g., "user may see stale feed for up to 5s"), not just "eventual consistency." |
-| d | Runbook exists | At least 1 runbook sketch for a top failure scenario with specific steps. |
+| a | Capacity chain complete | All links: DAU, read QPS, write QPS, storage/day, total storage, bandwidth, server count. |
+| b | Numbers plausibility | Cross-check against `numbers-to-know.md`. Order-of-magnitude correct. |
+| c | Growth trajectory | 10× and 100× scale inputs stated with first breaking constraint. |
+| d | Latency budget sums | Breakdown components sum to the stated P99 target (±10%). |
+| e | Error budget concrete | Produces a specific number (e.g., "22 min downtime/month at 99.95%"). |
+| f | Consistency consequence | Names the user-facing effect (e.g., "user may see stale feed for up to 5s"), not just "eventual consistency." |
+| g | Runbook exists | At least 1 runbook sketch for a top failure scenario with specific steps. |
 
 ---
 
@@ -188,7 +196,7 @@ API:
 
 Schema:
 - Primary keys, sort keys, indexes with access pattern justification.
-- Partitioning/sharding strategy tied to Phase 1 capacity numbers.
+- Partitioning/sharding strategy tied to Phase 2 write QPS.
 - **PE signal**: Access patterns drive schema. Denormalization justified by
   read/write ratio. Index choices with cost analysis.
 
@@ -198,7 +206,7 @@ Schema:
 |---|-----------|----------------|
 | a | API shapes concrete | Every endpoint has explicit request shape AND response shape. No "returns data." |
 | b | Schema-API alignment | Every API access pattern has a matching index or scan strategy in schema. |
-| c | Sharding justified | Partition/shard key traces to write QPS from Phase 1. Reasoning stated. |
+| c | Sharding justified | Partition/shard key traces to write QPS from Phase 2. Reasoning stated. |
 | d | State machines present | Entities with multiple states have explicit state machine diagrams. |
 
 ---
@@ -211,7 +219,7 @@ forward. This replaces re-reading all 5 files during Phases 4-6.
 ```
 ## Context Checkpoint
 - Problem: [one sentence]
-- Scale: [DAU, read QPS, write QPS, total storage]
+- Scale: [DAU from Phase 1; read QPS, write QPS, total storage from Phase 2]
 - Key NFRs: [P99 latency, availability target, consistency model]
 - Core entities: [list with cardinality]
 - Critical access patterns: [top 3-5 from API design]
@@ -579,7 +587,7 @@ Run during Gate 6. Re-read the generated files (use the context checkpoint for
 
 ### Check 1: Numbers flow
 
-The capacity chain in `01-requirements.md` (DAU, QPS, storage) must match the
+The capacity chain in `02-non-functional-requirements.md` (DAU, QPS, storage) must match the
 numbers that drive decisions in `06-high-level-design.md`. If the HLD uses
 "100K QPS" but requirements say "50K QPS," one is wrong. Fix it.
 

@@ -2,8 +2,8 @@
 
 Synthesized from public interview guides, engineering blogs, and company
 hiring loops (Google L5+, Amazon SDE II–Principal, Meta Staff+, LinkedIn,
-Databricks, Microsoft). Use this reference at **Phase 1** (framing) and
-**Phase 4** (architecture) to calibrate world-class output.
+Databricks, Microsoft). Use at **Phase 1** (framing), **Phase 2** (scale/NFRs),
+and **Phase 4** (architecture).
 
 > Google rewards first-principles depth over rehearsed buzzwords. Amazon rewards
 > operational excellence and explicit assumptions. Both reward **numbers before
@@ -30,7 +30,7 @@ Databricks, Microsoft). Use this reference at **Phase 1** (framing) and
 
 ---
 
-## Requirements Phase — Non-Negotiables
+## Requirements Phase (Phase 1) — Non-Negotiables
 
 ### Reframing (before listing features)
 
@@ -43,22 +43,12 @@ Ask questions that change the architecture:
 
 Document at least one reframing that **narrows scope with judgment**.
 
-### Capacity estimation chain
+### Scale assumptions (inputs — not derived QPS)
 
-Every design must show this chain with explicit assumptions:
+Record inputs for Phase 2 math:
 
-```
-DAU (or MAU)
-  → actions/user/day
-  → average read QPS, average write QPS (separate!)
-  → peak QPS (state peak factor, typically 2–10×)
-  → storage/day (writes × object size)
-  → total storage (× retention)
-  → bandwidth (QPS × payload, read and write separate)
-  → server/instance count (peak QPS ÷ per-node capacity from numbers-to-know.md)
-```
-
-Also state **1×, 10×, 100×** scale inputs — evolution is not a Phase 6 surprise.
+- DAU / MAU, actions per user per day (read vs write separate)
+- Object / payload size, retention period, peak factor (2–10×)
 
 ### Out-of-scope
 
@@ -73,7 +63,28 @@ Define 2–3 measurable signals before architecture:
 
 ---
 
-## NFR Phase — SRE-Grade Constraints
+## NFR Phase (Phase 2) — SRE-Grade Constraints
+
+### Capacity estimation chain
+
+Every design must show this chain in `02-non-functional-requirements.md`,
+derived from Phase 1 assumptions:
+
+```
+DAU (or MAU)
+  → actions/user/day
+  → average read QPS, average write QPS (separate!)
+  → peak QPS (state peak factor, typically 2–10×)
+  → storage/day (writes × object size)
+  → total storage (× retention)
+  → bandwidth (QPS × payload, read and write separate)
+  → server/instance count (peak QPS ÷ per-node capacity from numbers-to-know.md)
+```
+
+Also state **1×, 10×, 100×** scale inputs — evolution is not a Phase 6 surprise.
+
+Capacity is a **non-functional** requirement (throughput, storage, scalability).
+Interviews run this math in minutes 5–15, right after clarifying scope.
 
 ### Latency budget (must sum to P99)
 

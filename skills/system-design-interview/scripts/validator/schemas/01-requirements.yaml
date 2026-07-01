@@ -5,36 +5,20 @@ required_headings:
 required_sections:
   - pattern: "(?i)(reframe|problem.framing|before.we.design)"
     name: "Problem reframing section"
-  - pattern: "(?i)(capacity|estimation|scale)"
-    name: "Capacity estimation section"
+  - pattern: "(?i)(scale.assumption|assumption|DAU|daily.active)"
+    name: "Scale assumptions section"
   - pattern: "(?i)(out.of.scope|exclusion)"
     name: "Out-of-scope section"
   - pattern: "(?i)(provisional.archetype|early.problem.shape|dominant.force|read:write)"
     name: "Early problem shape section"
-  - pattern: "(?i)(10x|100x|growth|trajectory)"
-    name: "Growth trajectory section"
+  - pattern: "(?i)(functional|requirements|key.behav)"
+    name: "Functional requirements section"
 min_counts:
   out_of_scope_items:
     pattern: "^\\s*[-*]\\s+"
     section_pattern: "(?i)out.of.scope"
     min: 3
     description: "Out-of-scope items with reasoning"
-capacity_chain:
-  required_links:
-    - pattern: "(?i)(DAU|daily.active)"
-      name: "DAU"
-    - pattern: "(?i)(read.*(QPS|queries|req)|QPS.*read|peak.*read)"
-      name: "Read QPS"
-    - pattern: "(?i)(write.*(QPS|queries|req)|QPS.*write|peak.*write|ingest)"
-      name: "Write QPS"
-    - pattern: "(?i)(storage.*(day|daily)|daily.*storage|storage/day)"
-      name: "Storage/day"
-    - pattern: "(?i)(total.*storage|storage.*total|storage.*retention)"
-      name: "Total storage"
-    - pattern: "(?i)(bandwidth|throughput|GB/s|MB/s|Gbps|TB/day)"
-      name: "Bandwidth"
-    - pattern: "(?i)(server|instance|node).*(count|needed|required)|nodes?\\s*(needed|required)"
-      name: "Server count"
 reframing:
   min: 1
   patterns:

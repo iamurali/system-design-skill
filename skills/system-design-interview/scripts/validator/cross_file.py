@@ -386,6 +386,7 @@ def run_cross_file_checks(folder: Path) -> ConsistencyReport:
     files = {}
     file_map = {
         "requirements": "01-requirements.md",
+        "nfr": "02-non-functional-requirements.md",
         "api": "04-api-design.md",
         "schema": "05-schema.md",
         "hld": "06-high-level-design.md",
@@ -400,12 +401,13 @@ def run_cross_file_checks(folder: Path) -> ConsistencyReport:
         else:
             files[key] = ""
 
-    if files["requirements"] and files["hld"]:
-        report.results.append(check_numbers_flow(files["requirements"], files["hld"]))
+    scale_content = (files.get("nfr") or "") + "\n" + (files.get("requirements") or "")
+    if scale_content.strip() and files["hld"]:
+        report.results.append(check_numbers_flow(scale_content, files["hld"]))
     else:
         report.results.append(ConsistencyResult(
             check_name="Numbers flow", passed=False,
-            details="Missing 01-requirements.md or 06-high-level-design.md"
+            details="Missing 02-non-functional-requirements.md (or 01-requirements.md) or 06-high-level-design.md"
         ))
 
     if files["api"] and files["schema"]:
