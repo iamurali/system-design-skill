@@ -18,7 +18,9 @@ For each phase 1-6:
     2. EVALUATE against the phase gate
     3. PASS → proceed to next phase
     4. FAIL → identify failure, FIX only that part, re-evaluate
-    After 2 failures: flag in "known issues", proceed anyway
+    5. After 2 failures: document in context checkpoint "known issues" and
+       fix in outer eval loop — do NOT proceed with known Gate failures on
+       capacity chain, start-cheap design, or missing failure flows.
 
 After all 6 phases:
   INTERVIEWER-RESEARCH LOOP (default after Phases 4, 5, 6):
@@ -42,14 +44,24 @@ After all 6 phases:
 
 1. Read `references/reasoning-engine.md` lines 1-131 (phase descriptions only).
    Skip the failure modes and checklists -- they are needed only at Phase 6.
-2. Scan existing problem folders in the output directory (default:
+2. Read `references/faang-interview-patterns.md` for world-class calibration
+   (requirements framing, estimation chain, HLD incremental design, company bar).
+3. Scan existing problem folders in the output directory (default:
    `system-design/` relative to the user's project root) to check for slug
    collisions. Derive `<problem-name>` as a short kebab-case slug from the
    prompt (e.g., "url-shortener", "distributed-cache", "news-feed").
-   Read one exemplar file (not all 8) from `assets/exemplars/` matching the
-   current phase when calibrating output quality.
-3. If the user names a company, read `references/company-profiles.md`.
-4. If the user asks "what should I practice," read `references/problem-bank.md`.
+4. **Load the phase skill** from `references/` (e.g., `requirements-skill.md` for
+   Phase 1, `hld-skill.md` for Phase 4). Read it before the template.
+5. **Load the phase template** from `assets/templates/` for the current phase
+   (e.g., `01-requirements.template.md`). Fill every required section; do not
+   skip headings the template defines.
+6. Read one exemplar file (not all 8) from `assets/exemplars/` matching the
+   current phase **and provisional shape** when calibrating output quality.
+   Exemplars must pass the validator — use them for depth and tone, templates
+   for structure. **Never default to A7 trending for non-aggregate prompts.**
+7. If the user names a company, read `references/company-profiles.md` and
+   apply the calibration table in `faang-interview-patterns.md`.
+8. If the user asks "what should I practice," read `references/problem-bank.md`.
 
 Do NOT preload all 7 reference files. Load just-in-time per phase.
 
@@ -66,24 +78,45 @@ Interviewer must be blind to self-scores and phase gate PASS/FAIL claims.
 ## Phase 1: Frame the Problem
 
 **Output**: `01-requirements.md`
-**Load**: `references/numbers-to-know.md`
+**Load (in order — do not skip):**
+1. `references/requirements-skill.md` — **primary** problem-agnostic requirements skill
+2. `references/numbers-to-know.md`
+3. `references/faang-interview-patterns.md`
+4. `references/hld-archetypes.md` — provisional shape classification only
+5. `assets/templates/01-requirements.template.md`
 
-- State functional requirements with company-scale context.
-- Capacity estimation: DAU → read QPS → write QPS → storage/day → total
-  storage → bandwidth → server count.
-- Explicit out-of-scope with one-line reasoning per exclusion.
-- For data-intensive problems: ranking signals, time windows, personalization.
-- **PE signal**: Question the problem framing. Surface hidden requirements.
-  Propose scope that reveals judgment.
+**Exemplar (optional, shape-matched only):**
+
+| If provisional shape is… | Read `01-requirements.md` |
+|--------------------------|---------------------------|
+| A3 Read-scaled | `assets/exemplars/in-memory-cache/` |
+| A7 Aggregate / top-K | `assets/exemplars/trending-articles-top-k/` |
+| A1 CRUD / other | **No requirements exemplar** — skill + template only |
+
+Follow `requirements-skill.md` and the template. Phase 1 covers **what** the
+system does: reframing, functional requirements, scale **assumptions** (inputs
+only), SLIs, and out-of-scope.
+
+**Capacity estimation** (QPS, storage, bandwidth, server count) is Phase 2 —
+see `nfr-skill.md`. FAANG interviews still do math early (minutes 5–15), but it
+belongs in NFRs taxonomically and in our artifact split.
+
+- State functional requirements with company-scale context (2–4 core features).
+- **Early problem shape**: provisional archetype + dominant force + read:write ratio.
+- **Problem reframing**: question the prompt; surface hidden requirements.
+- **Scale assumptions**: DAU, actions/user/day, object size, retention, peak factor.
+- **Success metrics (SLIs)**: 2–3 measurable signals before architecture.
+- Explicit out-of-scope: minimum 3 items, each with one-line reasoning.
 
 ### Gate 1 -- evaluate before proceeding
 
 | # | Criterion | Pass condition |
 |---|-----------|----------------|
-| a | Capacity chain complete | All links present: DAU → read QPS → write QPS → storage/day → total storage → bandwidth. No gaps. |
-| b | Reframing present | At least 1 problem reframing or hidden requirement surfaced (not just clarifications). |
+| a | Reframing present | At least 1 problem reframing or hidden requirement (not just clarifications). |
+| b | Scale assumptions | DAU (or MAU), read/write actions per user, object size, retention, peak factor stated. |
 | c | Out-of-scope coverage | At least 3 out-of-scope items, each with one-line reasoning. |
-| d | Numbers plausibility | Cross-check key numbers against `references/numbers-to-know.md`. Order-of-magnitude correct. |
+| d | Early problem shape | Provisional archetype + read:write ratio (or dominant force) stated. |
+| e | FR scope | 2–4 core functional requirements with access patterns implied. |
 
 **If any criterion fails**: identify the specific gap, fix only that section of
 `01-requirements.md`, re-evaluate. Max 2 iterations.
@@ -93,34 +126,64 @@ Interviewer must be blind to self-scores and phase gate PASS/FAIL claims.
 ## Phase 2: Set the Constraints
 
 **Output**: `02-non-functional-requirements.md`
-**Load**: `references/numbers-to-know.md` (if not already loaded)
+**Load (in order):**
+1. `references/nfr-skill.md` — **primary** NFR derivation skill
+2. `references/numbers-to-know.md`
+3. `assets/templates/02-non-functional-requirements.template.md`
 
+**Exemplar (optional, shape-matched):** same table as Phase 1 (`02-non-functional-requirements.md`).
+
+NFRs must **trace to Phase 1 assumptions**. Do not invent a separate scale story.
+Follow `nfr-skill.md` — **capacity estimation first**, then latency, availability,
+consistency, durability, security, and ops.
+
+- **Capacity estimation chain** (all links required):
+  DAU → read QPS → write QPS → storage/day → total storage → bandwidth →
+  server count. Show assumptions and math inline. Component load summary and
+  growth trajectory (1×, 10×, 100×) with first breaking constraint.
 - Percentile latency targets (P50/P95/P99/P99.9) with latency budget breakdown
-  showing where each millisecond goes.
-- Availability with SRE error budget math.
+  that sums to P99 (±10%).
+- Availability with SRE error budget math (concrete downtime per month).
 - Consistency model with explicit user-facing consequence.
-- Durability guarantees by failure class.
+- Durability guarantees by data class (RPO/RTO table).
+- Security NFRs (auth, encryption, abuse).
 - Operational requirements: zero-downtime deploy, monitoring thresholds, runbook
-  sketches.
-- Security NFRs.
-- **PE signal**: Error budget math connecting to deployment cadence. Runbooks
-  beyond "add monitoring."
+  sketch for top failure scenario.
 
 ### Gate 2 -- evaluate before proceeding
 
 | # | Criterion | Pass condition |
 |---|-----------|----------------|
-| a | Latency budget sums | Breakdown components sum to the stated P99 target (±10%). |
-| b | Error budget concrete | Produces a specific number (e.g., "22 min downtime/month at 99.95%"). |
-| c | Consistency consequence | Names the user-facing effect (e.g., "user may see stale feed for up to 5s"), not just "eventual consistency." |
-| d | Runbook exists | At least 1 runbook sketch for a top failure scenario with specific steps. |
+| a | Capacity chain complete | All links: DAU, read QPS, write QPS, storage/day, total storage, bandwidth, server count. |
+| b | Numbers plausibility | Cross-check against `numbers-to-know.md`. Order-of-magnitude correct. |
+| c | Growth trajectory | 10× and 100× scale inputs stated with first breaking constraint. |
+| d | Latency budget sums | Breakdown components sum to the stated P99 target (±10%). |
+| e | Error budget concrete | Produces a specific number (e.g., "22 min downtime/month at 99.95%"). |
+| f | Consistency consequence | Names the user-facing effect (e.g., "user may see stale feed for up to 5s"), not just "eventual consistency." |
+| g | Runbook exists | At least 1 runbook sketch for a top failure scenario with specific steps. |
 
 ---
 
 ## Phase 3: Define the Interface
 
 **Output**: `03-entities.md`, `04-api-design.md`, `05-schema.md`
-**Load**: `references/building-blocks-index.md` (for storage options)
+**Load (in order):**
+1. `references/interface-skill.md` — **primary** unified entities/API/schema skill
+2. `references/building-blocks-index.md` (L4 storage vocabulary)
+3. `assets/templates/03-entities.template.md`
+4. `assets/templates/04-api-design.template.md`
+5. `assets/templates/05-schema.template.md`
+
+**Exemplar (optional, shape-matched):**
+
+| Shape | Read |
+|-------|------|
+| A3 | `assets/exemplars/in-memory-cache/03–05` |
+| A7 | `assets/exemplars/trending-articles-top-k/03–05` |
+| A1 / other | **Skill + templates only** |
+
+Complete **one design pass** per `interface-skill.md` — access patterns from
+Phase 1–2 drive all three files.
 
 Entities:
 - Core domain objects, relationships, cardinality, lifecycle.
@@ -133,7 +196,7 @@ API:
 
 Schema:
 - Primary keys, sort keys, indexes with access pattern justification.
-- Partitioning/sharding strategy tied to Phase 1 capacity numbers.
+- Partitioning/sharding strategy tied to Phase 2 write QPS.
 - **PE signal**: Access patterns drive schema. Denormalization justified by
   read/write ratio. Index choices with cost analysis.
 
@@ -143,7 +206,7 @@ Schema:
 |---|-----------|----------------|
 | a | API shapes concrete | Every endpoint has explicit request shape AND response shape. No "returns data." |
 | b | Schema-API alignment | Every API access pattern has a matching index or scan strategy in schema. |
-| c | Sharding justified | Partition/shard key traces to write QPS from Phase 1. Reasoning stated. |
+| c | Sharding justified | Partition/shard key traces to write QPS from Phase 2. Reasoning stated. |
 | d | State machines present | Entities with multiple states have explicit state machine diagrams. |
 
 ---
@@ -156,7 +219,7 @@ forward. This replaces re-reading all 5 files during Phases 4-6.
 ```
 ## Context Checkpoint
 - Problem: [one sentence]
-- Scale: [DAU, read QPS, write QPS, total storage]
+- Scale: [DAU from Phase 1; read QPS, write QPS, total storage from Phase 2]
 - Key NFRs: [P99 latency, availability target, consistency model]
 - Core entities: [list with cardinality]
 - Critical access patterns: [top 3-5 from API design]
@@ -172,19 +235,38 @@ Do NOT re-read files 01-05 in full during Phases 4-6. Use this checkpoint.
 ## Phase 4: Design the Architecture
 
 **Output**: `06-high-level-design.md`
-**Load**: `references/building-blocks-index.md`, `references/tradeoff-framework.md`
+**Load (in order — do not skip):**
+1. `references/hld-skill.md` — **primary** problem-agnostic HLD skill
+2. `references/hld-archetypes.md` — classify shape before any diagram
+3. `references/building-blocks-index.md` — capability vocabulary
+4. `references/tradeoff-framework.md`
+5. `references/research-protocol.md` — when Section 4 research is open
+6. `assets/templates/06-high-level-design.template.md`
 
-- Start with the cheapest design that satisfies requirements. Single DB,
-  monolith, no cache. State why it works at current scale.
-- Incrementally optimize: capacity numbers reveal bottlenecks. Add components
-  only when a number forces them. Each addition gets the trade-off triad:
-  solves / worsens / when-to-change.
-- Cite production system references where the design mirrors or diverges.
-- ASCII architecture diagrams with component boundaries, data flow, protocols.
-- For each technology choice: what it solves, what it worsens, what would
-  change it.
-- **PE signal**: 2-3 architecture options for the most contested decision with
-  named forces. Selection is judgment, not default.
+**Exemplar (optional, shape-matched only):**
+
+| If archetype is… | Read HLD exemplar |
+|------------------|-------------------|
+| A1 Point CRUD | `assets/exemplars/url-shortener/06-high-level-design.md` |
+| A3 Read-scaled | `assets/exemplars/in-memory-cache/06-high-level-design.md` |
+| A7 Aggregate / top-K | `assets/exemplars/trending-articles-top-k/06-high-level-design.md` |
+| Other / mixed | **No HLD exemplar** — skill + template only |
+
+**Never** default to the trending/top-K exemplar. If the prompt is not aggregation-heavy, loading it will bias the design.
+
+### Phase 4 workflow (from hld-skill.md)
+
+1. **Problem Shape Classification** — signals table + primary archetype
+2. **Required Capabilities** — no product names; now/defer/skip per capability
+3. **Architecture Evolution** — credible v0 at 1×; breaking points with numbers
+4. **Architecture Research** — ≥2 contested capabilities (or 1 if trivial CRUD at low QPS)
+5. **System Overview** — topology from **archetype**, not a default pipeline
+6. **Flows 1–4** — write, read (latency budget), failure, deploy
+7. **Component Registry** — Role | Implementation | Capacity | Failure | Owner
+8. **Trade-off triads** — per capability added after v0
+9. **Production evidence** — tied to decisions made above
+
+**Do not** start with product names. **Do not** assume ingest→log→stream→cache unless A7 (or hybrid) classification requires it.
 
 ### Mandatory Flow Coverage
 
@@ -219,9 +301,14 @@ Every major component (not leaf utilities) in the architecture MUST have:
 |---|-----------|----------------|
 | a | Starting design valid | The "cheap" starting design genuinely handles current-scale numbers from the context checkpoint (not a strawman dismissed in one sentence). |
 | b | Components justified | Every component added beyond starting design traces to a specific bottleneck number from the checkpoint. |
-| c | Options presented | At least 1 contested decision shows 2-3 options with named forces that pick between them. |
+| c | Options presented | At least **2 contested capabilities** (or 1 if trivial low-QPS CRUD) with 2–3 options and numeric justification. |
+| c2 | Shape-led design | `Problem Shape Classification` + archetype present; capabilities include explicit **skip** for irrelevant patterns (e.g. no stream if not A7). |
+| c3 | Research before products | `Architecture Research` sections present; diagram topology matches archetype, not a default pipeline. |
 | d | Checkpoint consistency | Architecture handles the QPS, storage, and latency from the context checkpoint. Spot-check: do the numbers match? |
 | e | Failure flow present | At least 2 component failures are traced through the system showing degradation behavior, recovery path, and user-facing impact. |
+| f | Deploy flow present | Canary/rolling strategy, schema migration, and rollback documented. |
+| g | Component registry | Table with capacity, failure mode, and owner for each major component. |
+| h | Read-path latency budget | Per-hop budgets in Flow 2 sum to Phase 2 P99 (±10%). |
 
 ---
 
@@ -278,7 +365,21 @@ minor, fix locally and proceed without Research.
 ## Phase 5: Go Deep
 
 **Output**: `07-deep-dives.md`
-**Load**: `references/reasoning-engine.md` (curveball protocol, lines 228-244)
+**Load (in order):**
+1. `references/deep-dive-skill.md` — **primary** depth-on-demand skill
+2. `references/reasoning-engine.md` (curveball protocol, lines 228-244)
+3. `assets/templates/07-deep-dives.template.md`
+
+**Exemplar (optional, shape-matched):**
+
+| Shape | Read `07-deep-dives.md` |
+|-------|-------------------------|
+| A3 | `assets/exemplars/in-memory-cache/` |
+| A7 | `assets/exemplars/trending-articles-top-k/` |
+| A1 / other | **Skill + template only** |
+
+Follow `deep-dive-skill.md` for component selection by archetype — do not default
+to streaming/sketch dives unless Phase 4 classification requires them.
 
 - **Minimum 4 deep dives** (recommend 5-6 for complex systems) on the most
   fragile or interesting components from Phase 4.
@@ -352,9 +453,18 @@ dives.
 ## Phase 6: Stress-Test and Synthesize
 
 **Output**: `08-bottlenecks-and-tradeoffs.md`
-**Load**: `references/principal-engineer-bar.md`, `references/building-blocks-index.md`
-Also load `references/reasoning-engine.md` lines 152-244 (failure modes,
-self-check, coverage sweep).
+**Load (in order):**
+1. `references/bottlenecks-skill.md` — **primary** synthesis skill
+2. `references/principal-engineer-bar.md`
+3. `references/building-blocks-index.md`
+4. `references/tradeoff-framework.md`
+5. `references/reasoning-engine.md` lines 152-244 (failure modes, coverage sweep)
+6. `assets/templates/08-bottlenecks-and-tradeoffs.template.md`
+
+**Exemplar (optional, shape-matched):** same table as Phase 5 (`08-bottlenecks-and-tradeoffs.md`).
+
+Follow `bottlenecks-skill.md` — bottlenecks must trace to checkpoint numbers,
+not generic stack assumptions.
 
 - Bottleneck analysis: **minimum 6 bottlenecks**, each with root cause, 2-3
   mitigations, and a real-world incident or analogy.
@@ -477,7 +587,7 @@ Run during Gate 6. Re-read the generated files (use the context checkpoint for
 
 ### Check 1: Numbers flow
 
-The capacity chain in `01-requirements.md` (DAU, QPS, storage) must match the
+The capacity chain in `02-non-functional-requirements.md` (DAU, QPS, storage) must match the
 numbers that drive decisions in `06-high-level-design.md`. If the HLD uses
 "100K QPS" but requirements say "50K QPS," one is wrong. Fix it.
 
@@ -673,4 +783,8 @@ All references live in `references/` relative to this file.
 | `references/problem-bank.md` | When user asks for a problem to practice. |
 | `references/tradeoff-framework.md` | Phase 4 when articulating design decisions. |
 | `references/numbers-to-know.md` | Phase 1 and Phase 2 for estimation. |
+| `references/faang-interview-patterns.md` | Phase 1 and Phase 4 for world-class calibration. |
+| `references/hld-skill.md` | **Phase 4 primary** — problem-agnostic HLD loop. |
+| `references/hld-archetypes.md` | Phase 4 — classify CRUD / feed / cache / aggregate / etc. |
+| `assets/templates/` | Each phase — load matching template before generating. |
 | `excalidraw-diagram` skill (companion) | Phase 4b (after Gate 4 passes). |

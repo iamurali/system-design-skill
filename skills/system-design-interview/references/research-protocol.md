@@ -34,6 +34,7 @@ Use a hybrid approach:
      layers
    - `references/company-profiles.md` for company-specific bar and system
      references
+   - `references/faang-interview-patterns.md` for world-class interview calibration
    - `references/numbers-to-know.md` for latency/QPS/storage plausibility
    - `references/tradeoff-framework.md` for decision framing
 

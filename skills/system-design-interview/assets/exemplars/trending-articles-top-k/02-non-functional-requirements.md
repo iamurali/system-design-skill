@@ -1,89 +1,126 @@
 # Non-Functional Requirements — Trending Articles / Top-K
 
-## Latency
+## Capacity Estimation
 
-| Metric | Target | Rationale |
-|--------|--------|------------|
-| **Trending API (read)** | P99 < 50 ms | User-facing; must feel instant |
-| **P50** | < 10 ms | Cache hit path |
-| **Event ingestion (write)** | P99 < 100 ms | Async accept; actual write to Kafka |
-| **End-to-end freshness** | Trending list updates within **1 minute** of events | Near-real-time; balances cost and UX |
+Derived from **Scale Assumptions** in `01-requirements.md`.
 
----
+### Estimation Chain
 
-## Accuracy
+```
+DAU = 200M
 
-| Dimension | Target | Implication |
-|-----------|--------|-------------|
-| **Count accuracy** | Within 5% error acceptable | Probabilistic structures (Count-Min Sketch); ε ≈ 0.05 |
-| **Rank order** | Top-10 should be correct; order within top-50 may have minor swaps | Approximate counts sufficient for ranking |
-| **Deduplication** | Unique user per content (optional) | HyperLogLog for cardinality; adds complexity |
+Read QPS (Trending API):
+  200M DAU × 20 trending reads/day ÷ 86,400 = 46K avg read QPS
+  Peak read QPS = 46K × 5 = 230K read QPS
 
-Approximate counting is acceptable because:
-- Trending is **discovery**, not analytics; exact counts not required
-- Memory and compute cost of exact counting at scale is prohibitive
-- Users tolerate small rank fluctuations
+Write QPS (Event ingestion):
+  200M × 10 impressions × 5% engagement = 100M events/day
+  Avg write QPS = 100M ÷ 86,400 = 1.2K write QPS
+  Peak write QPS = 1.2K × 5 = 6K write QPS (engagement only)
+  With dwell pings + multi-surface: peak write QPS ≈ 50K write QPS
 
----
+Storage/day:
+  100M events/day × 500 B = 50 GB/day raw events
 
-## Availability
+Total storage (7-day retention):
+  50 GB/day × 7 = 350 GB Kafka + 30 GB aggregation state (sketches, top-K)
 
-| Component | Target | Rationale |
-|-----------|--------|------------|
-| **Trending read API** | 99.9% | Trending is not mission-critical; feed works without it |
-| **Event ingestion** | 99.95% | Events must not be lost; buffering + retry |
-| **Stream processor** | 99.9% | Checkpointing; recovery within minutes |
+Read bandwidth:
+  230K read QPS × 5 KB response = 1.15 GB/s peak read bandwidth
 
-Degradation modes:
-- **Read path down**: Serve stale cached list or empty; degrade gracefully
-- **Write path backpressure**: Buffer events; shed load if necessary (prefer delay over drop for trending)
+Write bandwidth:
+  50K write QPS × 500 B = 25 MB/s peak write bandwidth
 
----
+Server count (API tier):
+  230K peak read QPS ÷ 10K QPS per API node = 24 nodes (+ 2× for HA → 48 API nodes)
+```
 
-## Freshness vs Accuracy Tradeoff
+### Component Load Summary
 
-| Scenario | Freshness | Accuracy | Choice |
-|----------|-----------|----------|--------|
-| Real-time (1h window) | < 1 min | ±5% OK | Prioritize freshness; smaller sketch if needed |
-| 24h window | 1–5 min | ±3% preferred | Balance; larger sketch |
-| 7d window | 5–15 min | ±2% preferred | Prioritize accuracy; can use batch reconciliation |
+| Component | Peak load | Notes |
+|-----------|-----------|-------|
+| Event ingestion API | 50K write QPS | Validate, dedupe, produce to Kafka |
+| Kafka | 50K msg/s | Partition by `content_id` |
+| Stream processor | 50K events/s | Sketch + top-K per segment |
+| Redis writes | 2K QPS | Batched top-K pushes per segment |
+| Trending read API | 230K read QPS | >99% cache hit on Redis |
 
-**Thresholds**:
-- **Staleness SLA**: Trending list age < 2× update interval (e.g., 1h list updated every 30s → max 60s stale)
-- **Accuracy SLA**: 95% of top-50 items have estimated count within 5% of true count (measured via sample audit)
+### Growth Trajectory
 
----
+| Tier | Scale | First constraint |
+|------|-------|------------------|
+| 1× (launch) | 50K write QPS, 230K read QPS | Single Postgres aggregation viable for writes <1K QPS only |
+| 10× | 500K write QPS, 2.3M read QPS | Sketch memory + hot Kafka partitions |
+| 100× | 5M write QPS, 23M read QPS | Global merge of top-K; Redis memory per segment |
 
-## Abuse Resistance
+## Latency Targets
 
-Trending is a **high-value target** for manipulation (spam, bots, coordinated inauthentic behavior). Requirements:
+| Percentile | Trending Read API | Event Ingestion (accept) |
+|------------|-------------------|--------------------------|
+| P50 | < 10 ms | < 20 ms |
+| P95 | < 30 ms | < 50 ms |
+| P99 | < 50 ms | < 100 ms |
+| P99.9 | < 100 ms | < 200 ms |
 
-| Layer | Requirement | Implementation |
-|-------|-------------|----------------|
-| **Pre-count gate** | Events from low-reputation users not counted | User reputation score threshold; check before aggregation |
-| **Bot detection** | Known bot/suspicious accounts excluded | Integration with LinkedIn's integrity systems |
-| **Velocity anomaly** | Sudden spike from single IP/region flagged | Rate-based anomaly detection; temporary suppression |
-| **Content quality** | Spam/low-quality content gated | Spam classifier score; content below threshold excluded from trending |
-| **Coordinated behavior** | Unusual engagement patterns detected | Graph-based signals; delay or suppress |
+End-to-end freshness: 1-hour trending list updates within **60 seconds** of events.
 
-**Order of operations**: `Event → [Reputation check] → [Bot check] → [Content quality] → [Count]`. Failed checks: event logged for audit, not counted.
+### Latency Budget Breakdown (Read API P99 = 50 ms)
 
----
+| Hop | Budget | Notes |
+|-----|--------|-------|
+| Client → CDN/edge | 5 ms | Static assets only; API direct |
+| CDN → load balancer | 3 ms | Same region |
+| LB → API gateway | 2 ms | Auth token validation |
+| Gateway → Trending API | 5 ms | Routing |
+| API → Redis (same AZ) | 2 ms | Connection pool |
+| Redis ZREVRANGE + deserialize | 3 ms | O(log N + K), K≤50 |
+| API response serialization | 5 ms | JSON 5 KB |
+| Tail buffer (GC, jitter) | 25 ms | Headroom for P99 |
+| **Total P99** | **50 ms** | Sum = 50 ms |
 
-## Consistency
+## Availability and Error Budget
 
-| Aspect | Requirement |
-|--------|-------------|
-| **Read-your-writes** | Not required; trending is eventually consistent |
-| **Cross-window consistency** | 1h, 24h, 7d lists may be computed at different times; slight inconsistency OK |
-| **Idempotency** | Event ingestion idempotent via `event_id`; exactly-once processing in stream |
+| Component | Target | Error budget (concrete) |
+|-----------|--------|-------------------------|
+| Trending read API | 99.9% | ~43 min downtime/month |
+| Event ingestion | 99.95% | ~22 min downtime/month |
+| Stream processor | 99.9% | ~43 min/month; checkpoint recovery |
 
----
+**Budget consumers:** rolling deploys (planned ~5 min/week), Redis failover (~30s), Flink checkpoint recovery (5–15 min — serve stale during recovery).
+
+## Consistency Model
+
+| Data | Model | User-facing consequence |
+|------|-------|-------------------------|
+| Top-K lists | Eventual | User may see trending list up to **60s stale** after a viral spike; rank order within top-10 remains stable |
+| Event ingestion ack | At-least-once to Kafka | Duplicate `event_id` deduped at consumer |
+| Cross-window (1h vs 24h) | Independent | 1h and 24h lists may reflect different snapshot times — acceptable |
+
+## Durability
+
+| Data class | RPO | RTO | Mechanism |
+|------------|-----|-----|-----------|
+| Raw engagement events | 0 | 5 min | Kafka 7-day retention, acks=all, ISR ≥2 |
+| Aggregation state | 5 min | 10 min | Flink checkpoint to S3 every 5 min |
+| Top-K snapshots (Redis) | 1 min | 30 sec | Rebuild from stream replay; AOF everysec |
+
+## Security NFRs
+
+- **Auth:** Internal services mTLS; public API OAuth 2.0 bearer tokens.
+- **Encryption:** TLS 1.3 in transit; Kafka and Redis encrypted at rest.
+- **Abuse:** Reputation gate before count; rate limit 10K events/sec per `content_id`.
 
 ## Operational Requirements
 
 | Requirement | Target |
 |-------------|--------|
-| **Monitoring** | Lag, error rate, P99 latency, sketch accuracy (sample audit) |
-| **Alerting** | Consumer lag > 5 min; error rate > 0.1%; API P99 > 100 ms |
-| **Capacity planning** | Scale stream processors with event growth; Redis memory headroom |
+| Zero-downtime deploy | Rolling canary on API; Flink savepoint migration |
+| Alerting | Consumer lag > 5 min; API P99 > 80 ms; sketch audit drift > 10% |
+| Capacity review | Monthly; scale Kafka partitions when >70% broker CPU |
+
+### Runbook: Stream Processor Lag > 10 Minutes
+
+1. **Detect:** Flink consumer lag alert; trending freshness SLO breach.
+2. **Mitigate:** Scale task parallelism; shed non-critical segments (7d window); increase allowed lateness temporarily.
+3. **Recover:** Identify hot `content_id` partition; optional dedicated consumer for hot key; replay from last checkpoint.
+4. **Post-incident:** Add hot-content detection to ingestion path; partition split playbook.

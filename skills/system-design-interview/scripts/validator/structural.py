@@ -692,13 +692,98 @@ def validate_interview_transcript(content: str, schema: dict) -> list[CheckResul
     return results
 
 
+def validate_hld_flows(content: str, schema: dict) -> list[CheckResult]:
+    results = []
+    flows = schema.get("flows", {})
+    for flow_name, flow_cfg in flows.items():
+        patterns = flow_cfg.get("patterns", [])
+        present, count = check_patterns_present(content, patterns)
+        results.append(CheckResult(
+            gate="Gate 4",
+            criterion=f"HLD flow: {flow_name}",
+            passed=present,
+            evidence=flow_cfg.get("description", flow_name) + f" — signals={count}"
+        ))
+    return results
+
+
+def validate_start_cheap(content: str, schema: dict) -> list[CheckResult]:
+    sc = schema.get("start_cheap")
+    if not sc:
+        return []
+    present, count = check_patterns_present(content, sc.get("patterns", []), sc.get("min", 1))
+    return [CheckResult(
+        gate="Gate 4",
+        criterion="Start-cheap incremental design",
+        passed=present,
+        evidence=f"Found {count} start-cheap signal(s), need >= {sc.get('min', 1)}"
+    )]
+
+
+def validate_component_registry(content: str, schema: dict) -> list[CheckResult]:
+    cr = schema.get("component_registry")
+    if not cr:
+        return []
+
+    section = extract_section(content, r"(?i)component.registry")
+    if not section:
+        section = content
+
+    table_rows = re.findall(r"^\|[^|]+\|[^|]+\|[^|]+\|", section, re.MULTILINE)
+    row_count = max(0, len(table_rows) - 1)
+
+    has_owner = bool(re.search(cr.get("owner_pattern", ""), section, re.IGNORECASE))
+    has_capacity = bool(re.search(cr.get("capacity_pattern", ""), section, re.IGNORECASE))
+    has_failure = bool(re.search(cr.get("failure_pattern", ""), section, re.IGNORECASE))
+    min_rows = cr.get("min_rows", 4)
+
+    passed = row_count >= min_rows and has_owner and has_capacity and has_failure
+    evidence = f"rows={row_count}, owner={has_owner}, capacity={has_capacity}, failure={has_failure}"
+
+    return [CheckResult(
+        gate="Gate 4",
+        criterion="Component registry complete",
+        passed=passed,
+        evidence=evidence
+    )]
+
+
+def validate_hld_tradeoffs(content: str, schema: dict) -> list[CheckResult]:
+    tt = schema.get("tradeoff_triads")
+    if not tt:
+        return []
+    present, count = check_patterns_present(content, tt.get("patterns", []), tt.get("min", 4))
+    return [CheckResult(
+        gate="Gate 4",
+        criterion="HLD trade-off triads",
+        passed=present,
+        evidence=f"Found {count} triad signal(s), need >= {tt.get('min', 4)}"
+    )]
+
+
+def validate_hld_options(content: str, schema: dict) -> list[CheckResult]:
+    op = schema.get("options_presented")
+    if not op:
+        return []
+    present, count = check_patterns_present(content, op.get("patterns", []), op.get("min", 1))
+    return [CheckResult(
+        gate="Gate 4",
+        criterion="Architecture options presented",
+        passed=present,
+        evidence=f"Found {count} options signal(s), need >= {op.get('min', 1)}"
+    )]
+
+
 FILE_VALIDATORS = {
-    "01-requirements.md": [validate_capacity_chain, validate_reframing],
-    "02-non-functional-requirements.md": [validate_latency_budget, validate_error_budget, validate_runbook, validate_consistency_consequence],
+    "01-requirements.md": [validate_reframing],
+    "02-non-functional-requirements.md": [validate_capacity_chain, validate_latency_budget, validate_error_budget, validate_runbook, validate_consistency_consequence],
     "03-entities.md": [validate_state_machines],
     "04-api-design.md": [validate_api_shapes],
     "05-schema.md": [validate_sharding],
-    "06-high-level-design.md": [],
+    "06-high-level-design.md": [
+        validate_hld_flows, validate_start_cheap, validate_component_registry,
+        validate_hld_tradeoffs, validate_hld_options,
+    ],
     "07-deep-dives.md": [validate_deep_dives, validate_breaking_points, validate_resiliency, validate_depth_signals],
     "08-bottlenecks-and-tradeoffs.md": [
         validate_bottlenecks, validate_failure_matrix, validate_coverage_sweep,

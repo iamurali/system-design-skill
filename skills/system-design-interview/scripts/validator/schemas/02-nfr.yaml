@@ -1,14 +1,34 @@
 file_pattern: "02-non-functional-requirements.md"
 required_headings:
   h1: 1
-  h2_min: 3
+  h2_min: 4
 required_sections:
+  - pattern: "(?i)(capacity|estimation|scale)"
+    name: "Capacity estimation section"
+  - pattern: "(?i)(10x|100x|growth|trajectory)"
+    name: "Growth trajectory section"
   - pattern: "(?i)(latency|P99|P95|percentile)"
     name: "Latency targets section"
   - pattern: "(?i)(availability|uptime|error.budget|SLA)"
     name: "Availability section"
   - pattern: "(?i)(consistency|CAP|eventual|strong)"
     name: "Consistency model section"
+capacity_chain:
+  required_links:
+    - pattern: "(?i)(DAU|daily.active)"
+      name: "DAU"
+    - pattern: "(?i)(read.*(QPS|queries|req)|QPS.*read|peak.*read)"
+      name: "Read QPS"
+    - pattern: "(?i)(write.*(QPS|queries|req)|QPS.*write|peak.*write|ingest)"
+      name: "Write QPS"
+    - pattern: "(?i)(storage.*(day|daily)|daily.*storage|storage/day)"
+      name: "Storage/day"
+    - pattern: "(?i)(total.*storage|storage.*total|storage.*retention)"
+      name: "Total storage"
+    - pattern: "(?i)(bandwidth|throughput|GB/s|MB/s|Gbps|TB/day)"
+      name: "Bandwidth"
+    - pattern: "(?i)(server|instance|node).*(count|needed|required)|nodes?\\s*(needed|required)"
+      name: "Server count"
 latency_budget:
   target_pattern: "(?i)P99.*?(\\d+\\.?\\d*)\\s*ms"
   breakdown_pattern: "(?i)(\\d+\\.?\\d*)\\s*ms"

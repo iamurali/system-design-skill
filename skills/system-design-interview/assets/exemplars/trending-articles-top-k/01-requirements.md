@@ -1,126 +1,63 @@
 # Functional Requirements — Trending Articles / Top-K
 
-## LinkedIn Context
+## Problem Reframing
 
-LinkedIn's trending system surfaces **what's hot** across multiple content types and surfaces:
+**Before we design:** Do users need **exact leaderboard positions** or **directional trending** where approximate ranks suffice?
 
-| Content Type | Description | Example |
-|--------------|-------------|---------|
-| **Posts** | Feed posts, articles, carousels | "Top posts in your network this week" |
-| **Articles** | Long-form content from creators | "Trending articles in Technology" |
-| **Hashtags** | Topic aggregation | #AI, #RemoteWork, #CareerAdvice |
-| **Skills** | Endorsement and hiring trends | "Python trending in Software Engineering" |
-| **Job Titles** | Hiring demand signals | "Staff Engineer" trending in Bay Area |
+**Decision:** Trending is a **discovery surface**, not analytics. We accept ±5% count error and minor rank swaps outside top-10. That unlocks approximate counting (Count-Min Sketch) and eliminates the need for exact per-content counters at billions of keys — the architecture changes entirely if exact counts were required.
 
-Each surface has distinct engagement semantics and ranking signals. The system must unify event ingestion while supporting type-specific scoring.
+### Hidden Requirements Surfaced
 
----
+1. **Abuse resistance** — trending is a high-value manipulation target; events must pass reputation/bot gates before counting.
+2. **Freshness vs cost** — 1-hour window needs sub-minute updates; 7-day window can tolerate 15-minute batch reconciliation.
+3. **Segment cardinality** — `(windows × geos × industries)` explodes; we cannot materialize all combinations.
 
-## Scale
+## Early Problem Shape (provisional)
 
-| Metric | Target | Rationale |
-|--------|--------|------------|
-| **Feed impressions** | 2B+ / day | LinkedIn's feed scale; trending surfaces are a subset |
-| **Engagement events** | Millions / second (peak) | Views, likes, comments, shares, dwell-time pings |
-| **Unique content items** | Hundreds of millions | Posts, articles, hashtags, skills, jobs |
-| **Active users** | 900M+ members | Global audience; geo and industry segmentation |
+| Signal | Value |
+|--------|-------|
+| Provisional archetype | **A7** Aggregate / meter (top-K, windowed) |
+| Dominant force | Ingest high-volume events; serve low-latency global top-K reads |
+| Read:write ratio | ~1:50 ingest events vs trending API reads by volume; API is read-heavy at query time |
 
----
+## Functional Requirements
 
-## Ranking Signals
+| ID | Requirement | Priority | Notes |
+|----|-------------|----------|-------|
+| FR-1 | Ingest engagement events (view, like, comment, share, dwell) | P0 | Async; idempotent by `event_id` |
+| FR-2 | Compute weighted trending score per content within time window | P0 | Write-heavy ingestion path |
+| FR-3 | Serve global top-K per (window, geo, category) | P0 | Pre-computed lists; read-heavy API |
+| FR-4 | Filter by geo, industry, content type at query time | P1 | Hot segments pre-aggregated |
+| FR-5 | Admin tuning of signal weights without deploy | P2 | Config service |
 
-Multiple signals contribute to trending score. Each has different weight and freshness requirements:
+**Scope:** 3 windows (1h, 24h, 7d), top 20 geos, top 20 industries. No per-user network trending (see out-of-scope).
 
-| Signal | Weight (typical) | Latency sensitivity | Notes |
-|--------|------------------|---------------------|-------|
-| **View** | 1 | High | Most frequent; may be deduplicated per user |
-| **Like** | 2–3 | Medium | Strong intent signal |
-| **Comment** | 3–5 | Medium | High engagement; expensive to compute |
-| **Share** | 4–6 | High | Viral amplification |
-| **Dwell time** | 0.5–2 (bucketed) | Low | Quality signal; aggregate per session |
-| **Repost** | 2–4 | High | Content propagation |
+## Scale Assumptions (inputs for Phase 2)
 
-Weights are configurable per content type and surface. Admin API allows tuning without code deploy.
+| Parameter | Value | Rationale |
+|-----------|-------|-----------|
+| DAU | 200M | LinkedIn-scale professional network |
+| Feed impressions/DAU/day | 10 | Scroll-heavy feed |
+| Engagement rate | 5% | View, like, comment, share |
+| Trending API reads/DAU/day | 20 | Discovery surface usage |
+| Avg event payload | 500 B | JSON with metadata |
+| Retention (raw events) | 7 days | Kafka replay + reconciliation |
+| Peak factor | 5× | Viral content / US business hours |
 
----
+## Success Metrics (SLIs)
 
-## Time Windows
+| Metric | Target | Type |
+|--------|--------|------|
+| Trending API P99 latency | < 50 ms | Technical |
+| Freshness lag (1h window) | < 60 s | Technical |
+| Top-10 rank stability | > 95% unchanged over 5 min | Business |
+| Ingestion error rate | < 0.01% | Technical |
 
-| Window | Use Case | Update frequency |
-|--------|----------|------------------|
-| **1 hour** | Real-time trending | Sub-minute; most latency-sensitive |
-| **24 hours** | Daily trends | 1–5 min acceptable |
-| **7 days** | Weekly trends | 5–15 min acceptable |
+## Explicit Out-of-Scope
 
-Windows can be **tumbling** (fixed boundaries) or **sliding** (smooth decay). Real-time trending (1h) typically uses sliding or hopping windows to avoid boundary artifacts.
-
----
-
-## Personalization
-
-| Mode | Description | Complexity |
-|------|-------------|------------|
-| **Global trending** | Top-K across all members | Single pre-computed list per (window, geo, category) |
-| **Trending in your network** | Top-K among 1st/2nd degree connections | Requires graph-aware aggregation; higher cost |
-| **Trending in your industry** | Filter by member industry | Pre-computed per industry segment |
-| **Trending in your region** | Geo-filtered (country, metro) | Pre-computed per geo |
-
-Personalization increases cardinality: `(windows × geos × industries × network_slices)`. Not all combinations are materialized; long-tail uses query-time filtering.
-
----
-
-## Geo and Industry Segmentation
-
-- **Geo**: Country, region (e.g., US-West), metro (e.g., SF Bay Area). Pre-aggregate for top geos; others computed on demand.
-- **Industry**: LinkedIn's industry taxonomy (200+). Pre-aggregate for top 20–50 industries.
-- **Combinations**: `geo × industry` for "Trending in Tech in US" — selective materialization.
-
----
-
-## Capacity Estimation
-
-### Events per Second
-
-```
-Assumptions:
-- 2B feed impressions/day ≈ 23K impressions/sec average
-- Engagement rate ~5% → ~1.2K engagement events/sec average
-- Peak 10× average → ~12K engagement events/sec peak
-- Add views, dwell pings → 50K–200K events/sec peak (conservative)
-- LinkedIn scale: 500K–2M events/sec peak (multiple surfaces)
-```
-
-| Component | Peak load | Notes |
-|-----------|-----------|-------|
-| Event ingestion API | 500K–2M req/sec | Async; write to Kafka |
-| Kafka throughput | Same | Partitioned by content_id |
-| Stream processor | Same | Consume, aggregate, emit |
-| Redis writes | 1K–10K/sec | Top-K list updates (batched) |
-| Trending API reads | 100K–500K req/sec | Cache hit ratio >99% |
-
-### Storage for Counters
-
-```
-Count-Min Sketch per (window, segment):
-- Width w = 2^18 ≈ 256K counters
-- Depth d = 5
-- 4 bytes per counter → 256K × 5 × 4 = 5 MB per sketch
-
-Segments: 3 windows × 50 geos × 20 industries × 2 (global/network) = 6,000 sketches
-Total: 6,000 × 5 MB = 30 GB (sketches only)
-
-Add: Top-K heaps, Redis sorted sets, checkpoint state → 50–100 GB for counting layer
-```
-
----
-
-## Key Behaviors
-
-| Requirement | Description |
-|-------------|-------------|
-| **Event ingestion** | Accept high-volume engagement events; validate, dedupe, route to Kafka |
-| **Multi-signal aggregation** | Weighted sum of engagement types per content within time window |
-| **Approximate counting** | Count-Min Sketch or Space-Saving; bounded error acceptable |
-| **Ranking** | Score = f(counts, decay, velocity); maintain top-K per segment |
-| **Filtering** | Category, geo, industry at query time; pre-compute hot combinations |
-| **Personalization** | Network-based and industry-based trending where feasible |
+| Exclusion | Reason |
+|-----------|--------|
+| Per-user "trending in your network" | Requires graph-aware aggregation per member — 900M× cardinality; compute on-demand only for premium, not core |
+| Exact view counts / billing-grade analytics | Approximate counts sufficient for discovery; exact path needs OLAP warehouse |
+| ML-based personalized ranking | Separate recommendation system; we serve segment-level top-K |
+| Real-time push notifications on trend changes | Different fanout infrastructure; API poll/SSE is sufficient |

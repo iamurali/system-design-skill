@@ -59,11 +59,15 @@ Flag missing treatment of:
 
 ### 4. Wrong Technology Choices
 
-Technology choices must be forced by constraints.
+Technology choices must be forced by constraints **after capability derivation and research**.
 
 Flag:
+- Diagram or HLD opens with a canned stack (log + stream processor + cache) without
+  `Required Capabilities` or `Architecture Research` sections
 - Kafka/Redis/Flink/Cassandra/etc. used as defaults rather than because a number
   forces them
+- Architecture research table missing or options lack rejected alternatives
+- Exemplar stack copied into an unrelated problem shape (read-heavy vs write-heavy)
 - A simpler design that would satisfy the current constraints
 - A chosen component whose failure or latency profile violates NFRs
 - Strong consistency where eventual consistency would be cheaper and sufficient

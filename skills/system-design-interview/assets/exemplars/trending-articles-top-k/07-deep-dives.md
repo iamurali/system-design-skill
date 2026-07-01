@@ -1,232 +1,156 @@
 # Deep Dives — Trending Articles / Top-K
 
-## Deep Dive 1: Count-Min Sketch Internals
+## Deep Dive 1: Count-Min Sketch
 
-### Structure
+### Workable
 
-- **d rows × w columns** of counters
-- **d independent hash functions** \(h_1, \ldots, h_d\), each mapping item \(x\) to a column in \(\{0, \ldots, w-1\}\)
-- **Update**: For item \(x\) and increment \(c\): for each row \(i\), do `counters[i][h_i(x) % w] += c`
-- **Query**: Return \(\min_i \text{counters}[i][h_i(x) \bmod w]\) — always overcounts or exact, never undercounts
+Fixed-size `d × w` counter array; update all `d` rows on each event; query returns min across rows.
 
-### Hash Function Selection
+**Limitations:** Overcounts on collisions; memory grows with ε; conservative merge invalid for distributed merge.
 
-- **Pairwise independent** hash family: \(\Pr[h_i(x) = a \wedge h_i(y) = b] = 1/w^2\) for \(x \neq y\)
-- **Construction**: \(h(x) = ((a \cdot x + b) \bmod p) \bmod w\) where \(a, b\) random in \(\mathbb{Z}_p\), \(p\) prime
-- **Tabulation hashing**: Alternative; faster in practice; 4–8 bits per character
-- **MurmurHash, xxHash**: Good for CMS; use different seeds per row
+### Strong
 
-### Width and Depth Sizing
+Pairwise-independent hashes; width `w = ⌈e/ε⌉`, depth `d = ⌈ln(1/δ)⌉`. For ε=0.01, δ=0.001: w=272, d=7 → **7.4 KB/sketch**. 6,000 segments ≈ 44 MB.
 
-**Theorem** (Cormode & Muthukrishnan): With probability at least \(1 - \delta\), the estimate \(\hat{n}_x\) for true count \(n_x\) satisfies:
-\[
-\hat{n}_x \leq n_x + \frac{\varepsilon}{e} \cdot N
-\]
-where \(N\) = total stream size, with:
-- **Width**: \(w = \lceil e / \varepsilon \rceil\)
-- **Depth**: \(d = \lceil \ln(1/\delta) \rceil\)
+**New challenges:** Heavy-tail items suffer collision bias; need conservative update (no cross-partition merge).
 
-**Examples**:
-| ε | δ | w | d | Memory (d×w×4 bytes) |
-|---|---|-----|---|----------------------|
-| 0.01 | 0.001 | 272 | 7 | ~7.4 KB |
-| 0.001 | 0.0001 | 2719 | 9 | ~98 KB |
-| 0.05 | 0.01 | 55 | 5 | ~1.1 KB |
+### Exceptional
 
-For trending: ε ≈ 0.01–0.05, δ ≈ 0.001 → w ≈ 55–272, d ≈ 5–7. In practice, w = 2^16–2^18 for high cardinality.
+**CMS update pseudocode:**
 
-### Conservative Update Optimization
+```python
+for row in range(d):
+    counters[row][h[row](content_id) % w] += weight
+estimate = min(counters[row][h[row](content_id) % w] for row in range(d))
+```
 
-- **Standard**: Increment all d counters
-- **Conservative**: Only increment the **minimum** counter among the d cells — reduces overcount
-- **Tradeoff**: Conservative reduces overcount (empirically 30–50%) but breaks linearity — **merge of two conservative sketches is not valid**. Use only when merge not needed (single partition).
+**Raft-style checkpoint sequence:** barrier inject → align checkpoints → persist to S3 → acknowledge → resume consumption.
 
-### Count-Min-Log for Heavy Tails
+**Sizing derivation:** P(estimate ≤ n_x + εN) ≥ 1−δ with w=⌈e/ε⌉.
 
-- **Problem**: CMS overcounts heavily for items with many collisions; heavy tail (few items with huge counts) suffers
-- **Count-Min-Log**: Store log(1 + count) instead of count; reduces impact of collisions on heavy hitters
-- **Merge**: Approximate; not linear
+**Breaking point:** At **500K QPS** per segment, single sketch update becomes CPU-bound (d=7 hashes × 500K = 3.5M ops/s per core).
 
-### Count-Sketch (Unbiased Estimator)
+**Resiliency pattern:** Replicate sketch state in Flink checkpoint every **5 min**; on failure, replay Kafka from offset with idempotent CMS updates.
 
-- **Structure**: Similar to CMS but with **signed** updates: increment or decrement based on sign hash \(s_i(x) \in \{-1, +1\}\)
-- **Query**: Median of d estimates (each row gives signed estimate)
-- **Property**: Unbiased — \(\mathbb{E}[\hat{n}_x] = n_x\); variance depends on w, d
-- **Use case**: When undercount is as bad as overcount; when unbiased estimate needed
+### Curveball: What if writes go 10×?
 
-**Comparison**: CMS overcounts; Count-Sketch unbiased but higher variance. For trending (ranking), overcount is acceptable → CMS preferred.
+1. **Constraint change:** 500K peak write QPS.
+2. **Invalidated assumption:** Single-task sketch per segment fits in memory with <50ms update latency.
+3. **Blast radius:** Flink aggregation layer only; ingestion and Redis serving unchanged.
+4. **Scoped redesign:** Shard aggregation by `hash(content_id) % 32`; periodic merge job for global top-K.
+5. **Verification:** Read path and Kafka retention still hold; only merge latency added (~30s).
 
 ---
 
 ## Deep Dive 2: Sliding Window Implementation
 
-### Tumbling Windows
+### Workable
 
-- **Definition**: Fixed-size, non-overlapping. Window 1: [0, 1h), Window 2: [1h, 2h), ...
-- **Pros**: Simple; deterministic; low state (one bucket per window)
-- **Cons**: Boundary artifacts — item at 0:59 and 1:01 are in different windows; rank can jump at boundaries
+Tumbling 1-hour buckets; cron aggregates each hour.
 
-### Sliding Windows
+**Limitations:** Boundary artifacts at hour edges; rank jumps at rollover.
 
-- **Definition**: Window of size W slides by 1 unit. At time t, window = [t-W, t).
-- **Pros**: Smooth; no boundary jump
-- **Cons**: Expensive — O(W) windows active; each event updates O(W) windows
+### Strong
 
-### Hopping Windows
+```python
+# Hopping window: 1h window, 1min slide
+for pane in panes_in_window(event_time):
+    sketch[segment][pane].update(content_id, weight)
+```
 
-- **Definition**: Window size W, advance by hop H (H < W). Overlap = W - H.
-- **Example**: 1h window, 5min hop → windows at 0:00, 0:05, 0:10, ...
-- **Pros**: Balance — reduces boundary artifacts; O(W/H) windows vs O(W) for sliding
-- **Cons**: Still some boundary effects at hop boundaries
+**New challenges:** O(W/H) active panes; state size grows linearly with hop frequency.
 
-### Pane-Based Optimization
+### Exceptional
 
-- **Idea**: Divide window into **panes** (sub-windows). Sliding window = union of panes.
-- **Example**: 1h window, 5min pane → 12 panes. Sliding window at t = sum of last 12 panes.
-- **Update**: On event, update current pane only. Query: sum last 12 panes. O(1) update, O(W/H) query.
-- **Implementation**: Circular buffer of pane counts; evict pane when it exits window.
+```java
+// Flink allowedLateness + side output for late events
+stream
+  .keyBy(content_id)
+  .window(TumblingEventTimeWindows.of(Time.hours(1)))
+  .allowedLateness(Time.seconds(120))
+  .sideOutputLateData(lateTag)
+  .aggregate(new TrendingAggregate());
+```
 
-### Late Events and Watermarks
+```python
+# Global top-K merge every 30s
+global_topk = heap_merge([partition.topk(100) for partition in partitions])
+redis.zadd(segment_key, global_topk)
+```
 
-- **Event time vs processing time**: Events have timestamp; may arrive out of order.
-- **Watermark**: Assert "no event with timestamp < T will arrive". Used to close windows.
-- **Flink**: `WatermarkStrategy` — periodic or punctuated watermarks. `allowedLateness` for late events (side output).
-- **Late event handling**: 
-  - **Drop**: Simple; may undercount
-  - **Side output + separate correction**: Recompute affected windows; merge with main stream
-  - **Allowed lateness**: Keep window state open for X seconds; update if late event arrives
 
----
+**Breaking point:** At **10× event rate**, sliding (not hopping) requires O(60) panes per key → **state exceeds 64 GB** per task slot.
 
-## Deep Dive 3: Distributed Counting
+**Resiliency pattern:** `allowedLateness=120s`; late events to side output; **retry budget** 3 retries with exponential backoff for Redis sink.
 
-### Per-Partition Local Counting
+### Curveball: What if event-time delay P99 goes to 5 minutes?
 
-- **Setup**: Kafka partition P → consumer/processor maintains local Count-Min Sketch for keys in P
-- **Locality**: Partition by content_id → same content's events in same partition → local sketch sufficient for that partition's keys
-- **Problem**: Global top-K requires merging across partitions
-
-### Two-Phase Aggregation
-
-1. **Phase 1**: Each partition emits its **local top-K** (e.g., top 100 per partition)
-2. **Phase 2**: Merge job collects all local top-K, merges (CMS is linear — sum sketches for keys that appear in any local top-K), computes global top-K
-3. **Emission**: Global top-K to Redis
-
-**Accuracy**: Merged sketch has same (ε, δ) guarantees. Top-K from merged sketch is correct.
-
-### Accuracy vs Communication Cost
-
-- **More partitions** → smaller local sketches, more merge overhead
-- **Larger local top-K** → fewer false negatives (missing a global top-K item) but more data to merge
-- **Rule of thumb**: Emit local top-2K to 5K when global K=100; ensures overlap with high probability
-
-### Partition Rebalancing
-
-- **Problem**: Consumer fails; partitions reassigned. State (sketch) lost or migrated.
-- **Flink/Samza**: State is checkpointed. On rebalance, new consumer loads state from checkpoint. Kafka offset from checkpoint.
-- **State migration**: Flink rescales; state redistributed. May take minutes for large state.
-- **Alternative**: Stateless merge — each partition only emits counts for its keys; merge job holds no long-lived state, rebuilds from partition outputs. Higher latency, simpler recovery.
+1. **Constraint change:** Mobile offline queue flush delays events 5 min.
+2. **Invalidated assumption:** 10s watermark slack sufficient.
+3. **Blast radius:** Window closure timing; serving freshness.
+4. **Scoped redesign:** Extend allowed lateness; serve with `X-Trending-Staleness` header; batch correction job for 24h window.
+5. **Verification:** Abuse gates and read API unchanged.
 
 ---
 
-## Deep Dive 4: Scoring and Ranking Algorithms
+## Deep Dive 3: Global Top-K Merge
 
-### Time-Decay Models
+### Workable
 
-| Model | Formula | Behavior |
-|-------|---------|----------|
-| **Exponential** | \(s = \sum_i w_i e^{-\lambda (t - t_i)}\) | Smooth; recent dominates |
-| **Linear** | \(s = \sum_i w_i \max(0, 1 - (t - t_i)/W)\) | Linear drop to 0 at W |
-| **Step** | \(s = \sum_i w_i \cdot \mathbf{1}[t - t_i < W]\) | Binary; in or out |
+Each Kafka partition maintains local top-100 heap; API reads single partition's view.
 
-**Half-life**: For exponential, \(\lambda = \ln 2 / t_{1/2}\). E.g., 6h half-life → 6h-old event has half the weight.
+**Limitations:** Incorrect global top-K; only valid for single-partition prototypes.
 
-### Reddit's Hot Ranking
+### Strong
 
-\[
-\text{score} = \frac{\log_{10}(|s|) + \frac{s \cdot \text{sign}}{45000}}{(t + 2)^{1.8}}
-\]
-- \(s\) = upvotes - downvotes; sign = direction
-- Logarithm dampens viral effect; time denominator penalizes age
-- Parameters tuned empirically
+Two-phase: partition-local top-K → merge job every 30s → global Redis ZSET.
 
-### Hacker News Algorithm
+**New challenges:** Merge lag 30s; merge service SPOF without standby.
 
-\[
-\text{score} = \frac{(v - 1)}{(t + 2)^{1.8}}
-\]
-- \(v\) = upvotes; simple
-- Gravity factor 1.8; newer posts rank higher
+### Exceptional
 
-### Wilson Score Interval
+**Complexity:** Local heap insert O(log K), K=100; merge of P partitions O(P·K log K) every 30s — at P=200, negligible vs network.
 
-- **Problem**: New content with few votes has high variance; 2 upvotes vs 0 downvotes could be luck
-- **Wilson score**: Lower bound of binomial proportion confidence interval
-- **Use**: Rank by lower bound instead of raw proportion; conservative for low-count items
-- **Formula**: Complex; involves normal approximation. Used for "best" ranking with uncertainty.
+**Breaking point:** At **100× scale**, merge job input = 200 × 100 = 20K items × 500B × 2/s = **20 MB/s** merge traffic — still fine; **Redis global key** becomes hot spot at **>500K read QPS**.
 
-### Cold Start (New Content)
+**Resiliency pattern:** Circuit breaker on merge service: **50% error rate over 10s → open 30s**; serve partition-local top-K degraded mode.
 
-- **Problem**: New content has few interactions; can't compete with established high-count items
-- **Recency boost**: \(score \times (1 + \alpha \cdot (1 - \text{age}/\text{window}))\) — newer content gets multiplier
-- **Velocity bonus**: Fast-rising content gets boost even with lower absolute count
-- **Separate list**: "Rising" or "Trending now" for high-velocity, lower-absolute items
+### Curveball: What if we need exact top-10 globally?
+
+1. **Constraint change:** Regulatory audit requires exact counts for top-10.
+2. **Invalidated assumption:** Approximate CMS acceptable.
+3. **Blast radius:** Counting layer only.
+4. **Scoped redesign:** Exact Space-Saving for top-10 candidates only + CMS for tail; hourly batch reconciliation from warehouse.
+5. **Verification:** API contract unchanged; freshness SLA relaxed for audit window.
 
 ---
 
-## Deep Dive 5: Exactly-Once Counting in Stream Processing
+## Deep Dive 4: Abuse Gate Pipeline
 
-### Flink Checkpointing (Chandy-Lamport)
+### Workable
 
-1. **Coordinator** (JobManager) triggers checkpoint; injects barrier into source
-2. **Barrier** flows downstream; when operator receives barrier on all inputs, it checkpoints its state
-3. **State backend** (RocksDB) writes to durable storage (S3, HDFS)
-4. **Exactly-once**: On recovery, restore state; reset source to checkpoint offset; replay from there. No duplicate processing.
+Static bot list filter before Kafka.
 
-### Kafka Exactly-Once Semantics
+**Limitations:** Cannot catch new bots; false negatives on coordinated campaigns.
 
-- **Idempotent producer**: Producer assigns PID; sequence numbers per partition; broker deduplicates
-- **Transactions**: Producer commits offset and output atomically. Consumer reads committed messages only.
-- **Flink-Kafka**: Uses Kafka transactions for sink; exactly-once end-to-end with Kafka as source and sink
+### Strong
 
-### End-to-End Exactly-Once
+Reputation score threshold (0.3) + velocity anomaly (10× baseline in 1 min) + content quality classifier.
 
-**Source** (Kafka) → **Processor** (Flink) → **Sink** (Redis)
+**New challenges:** False positives suppress organic viral content; latency +5ms per event.
 
-- **Source**: Kafka consumer with checkpoint; offset committed in checkpoint
-- **Processor**: State checkpointed; deterministic processing
-- **Sink**: Idempotent writes — Redis ZADD with same key overwrites; or two-phase commit if sink supports
+### Exceptional
 
-**Idempotent aggregation**: If we use `(content_id, event_id)` as dedup key in state, replay of same event is idempotent (no double count).
+**Order of operations:** `reputation → bot list → velocity → quality → count` — early exit saves 40% CPU on blocked events.
 
-### Cost of Exactly-Once
+**Breaking point:** At **>100K rejected events/s**, audit log write path saturates Postgres audit table (**~5K write QPS** limit).
 
-- **Checkpoint overhead**: Pause processing during checkpoint (or unaligned checkpoint for lower pause)
-- **State size**: Larger state → longer checkpoint
-- **At-least-once + idempotent**: Simpler; may overcount slightly; acceptable for trending (approximate). Use when exactly-once cost too high.
+**Resiliency pattern:** Async audit to Kafka topic `trending-abuse-audit`; bulkhead thread pool **10 threads** for audit separate from hot path.
 
----
+### Curveball: What if attackers spoof high-reputation accounts?
 
-## Deep Dive 6: Real-Time vs Batch Hybrid (Lambda Architecture)
-
-### Lambda Architecture
-
-- **Real-time path**: Stream processor (Flink) → approximate, low-latency trending
-- **Batch path**: Nightly or hourly batch job (Spark) → accurate counts from raw events
-- **Merge**: Serve real-time for freshness; batch corrects for drift. Or: batch for 7d, real-time for 1h.
-
-**Use case**: When real-time approximate is OK for 1h/24h, but 7d needs accuracy (batch has time to run).
-
-### Kappa Architecture Alternative
-
-- **Single pipeline**: One stream processing job for all windows
-- **Replay**: For correction, replay Kafka from earlier offset; reprocess. No separate batch.
-- **Simpler**: One codebase; one pipeline. Requires Kafka retention long enough (e.g., 7d).
-
-### Reconciliation Between Real-Time and Batch
-
-- **Approach 1**: Batch overwrites Redis for 7d window; real-time for 1h, 24h
-- **Approach 2**: Batch emits corrections; stream processor applies as delta
-- **Approach 3**: Run both; compare; alert on drift; batch used for audit, not serving
-
-**Tradeoff**: Lambda adds operational complexity (two pipelines); Kappa simpler but replay can be expensive at scale.
+1. **Constraint change:** Compromised high-rep accounts pass gate.
+2. **Invalidated assumption:** Static reputation sufficient.
+3. **Blast radius:** Abuse gate only.
+4. **Scoped redesign:** Add graph-based coordinated-engagement detector; delay trend emission 2 min for anomalous velocity clusters.
+5. **Verification:** Stream topology unchanged; added side branch for anomaly scoring.

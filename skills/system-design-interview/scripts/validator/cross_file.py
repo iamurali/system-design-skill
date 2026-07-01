@@ -80,12 +80,18 @@ def extract_qps_magnitude(content: str) -> list[float]:
     values = []
     for pat in patterns:
         for match in re.finditer(pat, content, re.IGNORECASE):
-            raw = match.group(1).replace(",", "")
-            suffix = match.group(2) or ""
-            val = float(raw)
+            raw = (match.group(1) or "").replace(",", "").strip()
+            if not raw:
+                continue
+            try:
+                val = float(raw)
+            except ValueError:
+                continue
+            suffix = (match.group(2) or "") if match.lastindex and match.lastindex >= 2 else ""
             multipliers = {"K": 1e3, "M": 1e6, "B": 1e9, "k": 1e3, "m": 1e6, "b": 1e9}
             val *= multipliers.get(suffix, 1)
-            values.append(val)
+            if val > 0:
+                values.append(val)
     return values
 
 
@@ -228,11 +234,12 @@ def extract_functional_requirements(requirements_content: str) -> list[str]:
     lines = requirements_content.split("\n")
     in_fr = False
     for line in lines:
-        if re.search(r"(?i)(functional|key.behav|requirement|feature)", line) and re.match(r"^#{1,3}\s", line):
+        # Anchor on ## Functional Requirements (not document h1 title)
+        if re.match(r"^##\s+.*(functional|key.behav)", line, re.IGNORECASE):
             in_fr = True
             continue
         if in_fr:
-            if re.match(r"^#{1,2}\s", line) and not re.search(r"(?i)functional", line):
+            if re.match(r"^##\s", line) and not re.search(r"(?i)functional", line):
                 break
             fr_section += line + "\n"
 
@@ -241,6 +248,10 @@ def extract_functional_requirements(requirements_content: str) -> list[str]:
 
     fr_items = []
     for line in fr_section.split("\n"):
+        table_match = re.match(r"\|\s*FR-\d+\s*\|\s*([^|]+)", line, re.IGNORECASE)
+        if table_match:
+            fr_items.append(table_match.group(1).strip()[:80])
+            continue
         if re.match(r"\s*[-*|]\s*\*?\*?", line):
             cleaned = re.sub(r"[\s*|-]+", " ", line).strip()
             keywords = [w for w in cleaned.split() if len(w) > 3 and w.lower() not in ("must", "should", "will", "that", "this", "with", "from", "have")]
@@ -375,6 +386,7 @@ def run_cross_file_checks(folder: Path) -> ConsistencyReport:
     files = {}
     file_map = {
         "requirements": "01-requirements.md",
+        "nfr": "02-non-functional-requirements.md",
         "api": "04-api-design.md",
         "schema": "05-schema.md",
         "hld": "06-high-level-design.md",
@@ -389,12 +401,13 @@ def run_cross_file_checks(folder: Path) -> ConsistencyReport:
         else:
             files[key] = ""
 
-    if files["requirements"] and files["hld"]:
-        report.results.append(check_numbers_flow(files["requirements"], files["hld"]))
+    scale_content = (files.get("nfr") or "") + "\n" + (files.get("requirements") or "")
+    if scale_content.strip() and files["hld"]:
+        report.results.append(check_numbers_flow(scale_content, files["hld"]))
     else:
         report.results.append(ConsistencyResult(
             check_name="Numbers flow", passed=False,
-            details="Missing 01-requirements.md or 06-high-level-design.md"
+            details="Missing 02-non-functional-requirements.md (or 01-requirements.md) or 06-high-level-design.md"
         ))
 
     if files["api"] and files["schema"]:

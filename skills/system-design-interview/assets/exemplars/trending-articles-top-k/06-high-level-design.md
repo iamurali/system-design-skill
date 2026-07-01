@@ -1,258 +1,190 @@
 # High-Level Design — Trending Articles / Top-K
 
-## Production Architecture: Real-World References
+> **Archetype A7 (Aggregate / windowed compute) only.** Do not use this HLD for CRUD, chat, or URL shortener prompts.
 
-### Twitter's Trending Topics
+## Problem Shape Classification
 
-Twitter's trending system (now X) processes billions of tweets and engagements. Key aspects from public disclosures and engineering blogs:
+| Signal | Value | Implication |
+|--------|-------|-------------|
+| Read QPS / Write QPS | 230K / 50K peak | Write-heavy ingestion + read-heavy serving |
+| Freshness | 60s on 1h window | Rules out batch-only v0 |
+| Dominant force | Windowed aggregation at 50K writes with 230K ranked reads | A7 + read cache |
 
-- **Real-time pipeline**: Tweets and engagements flow through a stream processing pipeline; trending updates every few minutes
-- **Geo and topic segmentation**: "Trending in US", "Trending in Technology"
-- **Anti-manipulation**: Coordinated inauthentic behavior detection; sudden spikes from bot networks suppressed
-- **Velocity over volume**: A topic rising fast can trend over one with higher absolute volume (rate of change matters)
-- **Challenges**: Repeated manipulation incidents (e.g., K-pop fan coordination, spam hashtags) led to algorithm changes and human review
+**Primary archetype:** A7 Aggregate / meter  
+**Secondary:** A3 Read-scaled serving (materialized top-K lists)
 
-### LinkedIn's Who's Viewed Your Profile
+## Required Capabilities
 
-LinkedIn's "Who's Viewed Your Profile" and similar features use:
+| Constraint (number) | Required capability | Layer | Mandatory when |
+|---------------------|---------------------|-------|----------------|
+| 50K peak write QPS, burst | Durable write buffer; decouple producers from aggregators | L5 messaging | Write path > ~1K TPS sustained |
+| 60s freshness on 1h window | Windowed incremental aggregation + recoverable state | L5 stream processing | Freshness < batch interval (5 min) |
+| 230K read QPS, P99 50ms | Pre-materialized ranked lists; sub-ms reads | L3 cache / L4 KV store | Read QPS > ~10K from DB |
+| Billions of keys, ±5% error OK | Approximate frequency / top-K (sketch or Space-Saving) | Algorithm | Exact counters infeasible |
+| 7d event retention, RPO 0 | Replayable durable log | L5 messaging | Cannot lose engagement events |
 
-- **Apache Samza**: LinkedIn created and open-sourced Samza for stream processing; it powers many real-time pipelines
-- **Kafka-centric**: Events flow through Kafka; Samza jobs consume, aggregate, and emit
-- **Keyed state**: Per-entity (e.g., profile_id) state in RocksDB; windowed aggregations
-- **Exactly-once**: Kafka transactions + Samza's checkpointing for exactly-once processing
+## Architecture Evolution (Start Cheap)
 
-### YouTube Trending Algorithm
+| Version | Scale trigger | Capabilities | Deferred | Why |
+|---------|---------------|--------------|----------|-----|
+| **v0** | <1K peak write QPS | RDBMS + cron aggregation | Log, stream, distributed cache | Postgres ~1K indexed writes/s |
+| **v1** | >10K write QPS | + durable event log | Stream processor, sketch | Write path saturates DB |
+| **v2** | >50K write QPS (current) | + stream aggregator + ranked store + sketch | Global merge sharding | Freshness + memory bounds |
+| **v3** | >500K write QPS (10×) | + sharded aggregation + two-phase top-K merge | — | Hot partition on single key |
 
-YouTube's trending tab (publicly discussed):
+**Selected:** v2 for 50K write / 230K read QPS.
 
-- **Multiple signals**: Views, likes, dislikes (historically), watch time, velocity, novelty
-- **Freshness bias**: Newer content favored; prevents evergreen content from dominating
-- **Quality gates**: Clickbait, misleading thumbnails penalized
-- **Geo and category**: Trending varies by country and category (Music, Gaming, etc.)
+## Architecture Research
 
----
+### Research: Durable write buffer (L5)
 
-## System Architecture
+| Option | Fits forces | Breaks when | Ops / failure | Verdict |
+|--------|-------------|-------------|-----------------|---------|
+| DB write-behind / outbox | Simple, strong ordering | >5K write QPS | DB becomes bottleneck | Reject at current scale |
+| Managed log (Kafka, Pulsar, Kinesis) | 50K+ QPS, replay, retention | Ops complexity | ISR / broker failover patterns known | **Selected** — replay + 7d retention |
+| Direct HTTP to aggregator | Lowest latency | No burst absorption | Loses events on crash | Reject — RPO violation |
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                           EVENT SOURCES                                           │
-│  Feed Service │ Engagement API │ Dwell Tracker │ Share/Repost Service             │
-└────────────────────────────────┬────────────────────────────────────────────────┘
-                                 │
-                                 ▼
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│  Event Ingestion API (internal)                                                   │
-│  - Validate, dedupe (event_id)                                                   │
-│  - Abuse pre-check (user reputation, bot list)                                   │
-│  - Partition key: content_id                                                      │
-└────────────────────────────────┬────────────────────────────────────────────────┘
-                                 │
-                                 ▼
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│  KAFKA: trending-engagement-events                                               │
-│  - Partitions: 100–500 (scale with throughput)                                   │
-│  - Partition by hash(content_id) → locality for same content                     │
-│  - Retention: 7d (replay, batch reconciliation)                                  │
-└────────────────────────────────┬────────────────────────────────────────────────┘
-                                 │
-                                 ▼
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│  STREAM PROCESSOR: Flink / Samza                                                 │
-│  - LinkedIn uses Samza (they created it)                                         │
-│  - Consume events → update Count-Min Sketch → maintain top-K heap → emit         │
-│  - Windowed aggregation: tumbling / sliding / hopping                             │
-│  - Checkpointing: Chandy-Lamport (Flink) for fault tolerance                     │
-│  - Parallelism: partition-level counting → periodic global merge                  │
-└────────────────────────────────┬────────────────────────────────────────────────┘
-                                 │
-                    ┌────────────┴────────────┐
-                    ▼                         ▼
-┌──────────────────────────────┐  ┌──────────────────────────────┐
-│  Redis (Top-K Cache)          │  │  Checkpoint Store (S3/HDFS)   │
-│  - Sorted sets per segment    │  │  - Sketch state for recovery  │
-│  - Push-based updates        │  │  - Exactly-once semantics     │
-└──────────────────────────────┘  └──────────────────────────────┘
-                    │
-                    ▼
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│  Trending API (Read Path)                                                        │
-│  - GET /trending?window=1h&category=tech&geo=US                                 │
-│  - Read from Redis; cache hit >99%                                                │
-│  - SSE/WebSocket for real-time streaming                                         │
-└─────────────────────────────────────────────────────────────────────────────────┘
-```
+**Selected:** Kafka-class log — **50K peak write QPS** requires decoupling; outbox insufficient.
 
----
+### Research: Windowed aggregation (L5)
 
-## Event Pipeline (Detail)
+| Option | Fits forces | Breaks when | Ops / failure | Verdict |
+|--------|-------------|-------------|-----------------|---------|
+| Cron + SQL (v0) | Simple | Freshness > 5 min | N/A | Reject — 60s SLA |
+| Spark micro-batch (1–5 min) | Cheaper ops | 1–5 min staleness | Job restart delay | Reject for 1h window |
+| Flink / Samza / managed stream | Sub-minute, keyed state | State size, checkpoint time | 5–15 min recovery at 50GB | **Selected** for 1h window |
+| In-process counters only | Fast | No durability | Process crash = loss | Reject |
 
-### Event Flow
+**Selected:** Flink (Samza equivalent at LinkedIn) — **60s freshness** at 50K events/s.
 
-1. **Sources**: Feed service emits view/like/comment; engagement service emits share/repost; dwell tracker emits time-on-content
-2. **Ingestion API**: Validates schema, checks `event_id` for idempotency, applies abuse gates (user reputation, bot list, content quality)
-3. **Kafka**: Events partitioned by `content_id` — all events for same content go to same partition → locality for aggregation
-4. **Stream processor**: Consumes, updates sketch, maintains heap, emits top-K to Redis
+### Research: Ranked read serving (L3/L4)
 
-### Partition Strategy
+| Option | Fits forces | Breaks when | Ops / failure | Verdict |
+|--------|-------------|-------------|-----------------|---------|
+| Read-through Postgres | Strong consistency | >1K read QPS | DB overload | Reject at 230K QPS |
+| Application in-memory cache | Fast | Cold start, per-pod inconsistency | Pod loss | Partial — L1 only |
+| Distributed ranked store (Redis ZSET, DynamoDB GSI) | 230K QPS, O(log N+K) | Memory cost, hot keys | Replica failover ~30s | **Selected** |
+| Compute on read from sketch | No materialization | P99 >> 50ms | CPU per request | Reject |
 
-- **Why partition by content_id?** 
-  - Same content's events land in same partition → single consumer can maintain sketch for that partition's content
-  - Reduces cross-partition communication for aggregation
-- **Hot partition risk**: Viral content (one content_id) can dominate a partition → partition count must be high enough to spread load; consider splitting hot content to dedicated consumers
+**Selected:** Redis sorted sets — **230K read QPS**, P99 **50ms** budget.
 
----
-
-## Stream Processing Layer (Detail)
-
-### Technology Choice: Flink vs Samza
-
-| Aspect | Flink | Samza |
-|--------|-------|-------|
-| **LinkedIn usage** | Used for some pipelines | **Primary**; LinkedIn created it |
-| **State management** | RocksDB, incremental checkpoints | Kafka-backed state, RocksDB |
-| **Windowing** | Rich: tumbling, sliding, session | Supported; configurable |
-| **Exactly-once** | Chandy-Lamport snapshots | Kafka transactions |
-| **Ecosystem** | Broader (batch + stream) | Kafka-centric |
-
-For LinkedIn context, **Samza** is the natural choice; for generic design, **Flink** is widely used.
-
-### Job Architecture
+## System Overview
 
 ```
-Flink/Samza Job:
-  1. Source: Kafka consumer (partitioned)
-  2. KeyBy: content_id (or (content_id, segment) for filtered aggregation)
-  3. Process:
-     a. For each event: apply decay, add weight to Count-Min Sketch
-     b. Query sketch for content_id → approximate count
-     c. Compute score = f(count, decay, velocity)
-     d. Update min-heap of top-K (size 100–500)
-  4. Sink: Emit top-K to Redis (or internal topic → Redis writer)
-  5. Checkpoint: Every 1–5 min; state = (sketch, heap) per keyed partition
+WRITE (50K peak QPS)                           READ (230K peak QPS)
+──────────────────                           ──────────────────
+
+[Engagement services]                        [Clients]
+        │ gRPC                                       │ HTTPS
+        ▼                                            ▼
+[Ingestion API] ──► [Durable event log]      [LB] ──► [Trending API]
+        │              (Kafka)                         │
+        │                  │                           ▼
+        │                  ▼                    [Ranked materialized store]
+        │           [Stream aggregator]            (Redis ZSET)
+        │              (Flink + CMS)                  │
+        └─ abuse gates ──┘                            └── P99 50ms
+                           │
+                           ▼ push 2K QPS
+                     [Ranked materialized store]
 ```
 
-### Window Types
+## Flow 1: Write / Data Path
 
-| Type | Description | Use Case |
-|------|-------------|----------|
-| **Tumbling** | Fixed, non-overlapping (e.g., 1h buckets) | Simple; boundary artifacts at bucket edges |
-| **Sliding** | Overlapping; slide by 1 unit | Smooth; expensive (many overlapping windows) |
-| **Hopping** | Fixed size, advance by hop < size (e.g., 1h window, 5min hop) | Compromise; reduces artifacts, manageable cost |
-| **Session** | Gap-based (for user sessions) | Less common for trending |
+1. **Engagement service → Ingestion API** (gRPC, ~5 ms): validate, `event_id` dedupe.
+2. **Abuse gates** (~2 ms): reputation, bot list, content quality.
+3. **Ingestion → Durable event log** (async, acks=all, ~10 ms): partition by `content_id`.
+4. **Stream aggregator** (consume, ~5 ms lag): CMS update + top-K heap.
+5. **Sink → Ranked store** (batched ZADD every 30s, ~2K QPS).
 
-For 1h real-time trending: **hopping** (1h window, 1min slide) or **sliding** with pane-based optimization.
+**Durable at:** event log (7d) + aggregator checkpoint (S3) + ranked store (serving copy).
 
-### Checkpointing (Flink)
+## Flow 2: Read / Query Path
 
-- **Chandy-Lamport distributed snapshots**: Coordinated checkpoint across all operators
-- **State**: Count-Min Sketch + top-K heap per key group
-- **Recovery**: On failure, restore from last checkpoint; replay Kafka from checkpoint offset
-- **Exactly-once**: Idempotent sink (Redis ZADD with same key overwrites) + checkpoint ensures no duplicate processing after recovery
+| Hop | Role | Protocol | Latency budget |
+|-----|------|----------|----------------|
+| 1 | Client → LB | HTTPS | 8 ms |
+| 2 | LB → Query API | HTTP/2 | 7 ms |
+| 3 | API → Ranked store | TCP same-AZ | 5 ms |
+| 4 | ZREVRANGE + deserialize | — | 3 ms |
+| 5 | Serialize response | — | 5 ms |
+| 6 | Tail buffer | — | 22 ms |
+| | **Total P99** | | **50 ms** |
 
-### Parallelism
+## Flow 3: Failure and Degradation
 
-- **Partition-level counting**: Each Kafka partition → one subtask; maintains local sketch for keys in that partition
-- **Global top-K merge**: 
-  - **Option A**: Each partition emits its local top-K; separate merge job aggregates
-  - **Option B**: Single job with keyed state; top-K is per-segment (segment = partition subset) — no global merge, approximate
-  - **Option C**: Two-phase: partition-level sketches → periodic merge job → global top-K
+### Failure: Ranked store (Redis) unavailable
 
----
+- **User impact:** Stale list from API pod cache (30s TTL) or 503 + last ETag.
+- **Degradation:** Stale-while-revalidate.
+- **Recovery:** Sentinel failover ~30s; jittered retry 100–500 ms.
+- **Stampede avoidance:** Singleflight per segment key.
 
-## Counting Algorithms Comparison
+### Failure: Stream aggregator (Flink) crash
 
-| Algorithm | Space | Update | Query | Error | Use Case |
-|-----------|-------|--------|-------|-------|----------|
-| **Exact (HashMap)** | O(n) | O(1) | O(1) | 0 | Doesn't scale; billions of keys |
-| **Space-Saving** | O(k) | O(1) | O(1) | Bounded for top-k | Heavy hitters; deterministic |
-| **Count-Min Sketch** | O(w×d) | O(d) | O(d) | Overcounts; prob 1-δ | General frequency; sublinear |
-| **HyperLogLog** | O(log log n) | O(1) | O(1) | ~1.04/√m | Unique count (distinct users) |
+- **User impact:** Lists freeze 5–15 min; last ranked-store snapshot served.
+- **Degradation:** Stale top-K per NFR.
+- **Recovery:** Checkpoint restore + replay from event log offset.
+- **Stampede avoidance:** Hot standby for 1h window.
 
-**Choice for trending**: Count-Min Sketch — sublinear space, handles high cardinality, overcount-only (safe for ranking). Space-Saving for top-K heavy hitters if we only care about top-K (no arbitrary count queries).
+## Flow 4: Deploy and Migration
 
-**Hybrid**: Count-Min Sketch for general counts + Space-Saving or heap for top-K maintenance.
+- **API:** Canary 5% → 25% → 100%; k8s rollback.
+- **Aggregator:** Savepoint → deploy → resume; dual-run one checkpoint interval.
+- **Schema:** Avro registry; backward-compatible readers 2 weeks.
+- **Rollback:** API instant; aggregator restore savepoint <10 min.
 
----
+## Component Registry
 
-## Scoring and Ranking
+| Role | Implementation | Capacity | Failure mode | Owner |
+|------|----------------|----------|--------------|-------|
+| Ingestion API | Custom gRPC service | 50K QPS writes | Overload → 429 | Product Platform |
+| Durable event log | Kafka | 50K QPS, 200 partitions | Broker loss → ISR failover | Data Platform |
+| Stream aggregator | Flink | 50K QPS, 50 GB state | Job fail → stale 5–15 min | Real-time Infra |
+| Ranked materialized store | Redis Cluster | 230K QPS reads, 30 GB | Node loss → replica promote | Caching Platform |
+| Query API | Trending API service | 230K QPS reads | Pod crash → LB drain | Product API |
 
-### Raw Count vs Weighted Score
+## Technology Trade-off Triads
 
-- **Raw count**: Sum of events; simple but treats view = like = share
-- **Weighted score**: `score = Σ (weight_i × count_i)` — like=2, comment=4, share=5, etc.
-- **Dwell time**: Bucketed (0–5s, 5–30s, 30–60s, 60+s) with different weights; quality signal
+### Approximate counting (Count-Min Sketch)
 
-### Time Decay
+- **Solves:** Sublinear memory at billions of keys; ±5% error acceptable.
+- **Worsens:** Overcount bias; conservative merge invalid across partitions.
+- **When to change:** Exact billing counts required → OLAP reconciliation path.
 
-| Model | Formula | Use Case |
-|-------|---------|----------|
-| **Exponential** | `score = Σ w_i × e^(-λ(t_now - t_i))` | Recent events matter more; smooth decay |
-| **Half-life** | `λ = ln(2)/half_life` | Configurable decay rate |
-| **Linear** | `score = Σ w_i × (1 - (t_now - t_i)/window)` | Simpler; zero at window end |
-| **Step** | Events in window count 1; outside count 0 | Tumbling window; boundary artifacts |
+### Durable event log (Kafka)
 
-**Velocity-based**: `score += velocity_bonus × (rate - baseline_rate)` — rising fast gets a boost (Twitter-style).
+- **Solves:** 50K/s write decoupling, replay, 7d retention.
+- **Worsens:** 10–50 ms produce latency; hot partition on viral `content_id`.
+- **When to change:** <1K write QPS → DB outbox sufficient.
 
-### Normalization
+### Stream aggregator (Flink)
 
-- **Content age bias**: New content has less time to accumulate; optional boost: `score *= (1 + recency_factor × (1 - age/window))`
-- **Category normalization**: Tech vs News may have different engagement rates; normalize by category baseline
+- **Solves:** 60s freshness, windowed CMS + top-K state.
+- **Worsens:** Checkpoint recovery 5–15 min at 50GB state.
+- **When to change:** All windows tolerate 15 min → Spark micro-batch.
 
----
+### Ranked store (Redis ZSET)
 
-## Serving Layer
+- **Solves:** 230K read QPS at P99 50ms.
+- **Worsens:** Memory per segment; global key hot at 100×.
+- **When to change:** Staleness tolerance rises → read-through DB + CDN.
 
-### Pre-Computed Lists in Redis
+## Production References
 
-- **Key**: `trending:{window}:{geo}:{category}:{scope}`
-- **Value**: Sorted set (ZSET) — member=content_id, score=trending_score
-- **Update**: Push-based — stream processor writes directly to Redis on each emission
-- **Read**: `ZREVRANGE key 0 (limit-1) WITHSCORES` — O(log N + limit)
+- **Keyed stream state + checkpoint:** recovery time grows with state size (50GB → 5–15 min) — drove hot-standby for 1h window.
+- **Twitter trending (2019):** manipulation incident — velocity + integrity graph informed abuse gate ordering.
+- **Memcached stampede (Facebook 2010):** stale-while-revalidate on read path.
 
-### Multiple Lists
-
-| List Type | Example Key | Update Freq |
-|-----------|-------------|-------------|
-| Global | trending:1h:global | 30s |
-| Per-geo | trending:1h:US:global | 30s |
-| Per-industry | trending:1h:tech:global | 1min |
-| Per-network | trending:1h:US:network:{user_id} | On-demand or pre-computed for active users |
-
-### Cache Refresh Strategy
-
-| Strategy | Description | Pros | Cons |
-|----------|-------------|------|------|
-| **Push-based** | Stream processor writes to Redis on update | Fresh; low read latency | Tight coupling; Redis write load |
-| **Pull-based** | Periodic job queries processor/DB, updates Redis | Decoupled | Staleness; extra hop |
-| **Hybrid** | Push for hot segments; pull for long-tail | Balance | More complex |
-
-**Recommendation**: Push-based for top segments (1h, 24h, top geos); pull for long-tail.
-
----
-
-## Anti-Gaming / Abuse
-
-### Order of Operations
-
-```
-Event → [User reputation check] → [Bot/suspicious check] → [Content quality check] → [Count]
-         ↓ fail                    ↓ fail                   ↓ fail
-         Log, don't count          Log, don't count         Log, don't count
+```sql
+-- v0 capability-minimal (cron aggregation)
+SELECT content_id, SUM(weight) AS score
+FROM engagement_events
+WHERE ts > NOW() - INTERVAL '1 hour'
+GROUP BY content_id ORDER BY score DESC LIMIT 100;
 ```
 
-### Mechanisms
-
-| Mechanism | Description |
-|-----------|-------------|
-| **User reputation** | Score 0–1 from account age, engagement history, reports; below threshold (e.g., 0.3) → exclude |
-| **Bot detection** | Integration with integrity system; known bots excluded before counting |
-| **Velocity anomaly** | Sudden spike from single IP/region (e.g., 10× baseline) → flag, temporary suppression |
-| **Content quality** | Spam classifier score; content below 0.5 → exclude from trending |
-| **Coordinated behavior** | Graph signals (many accounts from same cluster engaging same content) → delay or suppress |
-
-### Tradeoff
-
-- **Strict gates**: Fewer false trends, but may suppress organic viral content
-- **Loose gates**: More responsive, higher manipulation risk
-- **Tuning**: Admin config; A/B test thresholds
+```python
+# Ranked store read (implementation-specific)
+ZREVRANGE trending:1h:US:tech 0 49 WITHSCORES
+```

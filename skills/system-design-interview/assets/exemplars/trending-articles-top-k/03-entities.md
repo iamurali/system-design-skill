@@ -138,3 +138,23 @@ approximate_count + TimeWindow.decay_params ──▶ TrendingScore
 TrendingScore ──(order by score)──▶ Top-K Heap ──▶ HeavyHitter[]
 HeavyHitter[] ──▶ Materialized trending list (Redis)
 ```
+
+---
+
+## Entity Lifecycle (State Machine)
+
+`EngagementEvent` in the stream processor:
+
+```
+received → validated → abuse_gated → counted → aggregated → emitted
+              │            │ fail
+              ▼            ▼
+           rejected    audit_logged (not counted)
+```
+
+`TrendingList` segment:
+
+```
+pending → active → stale → refreshed
+```
+

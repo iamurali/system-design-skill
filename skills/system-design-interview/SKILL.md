@@ -18,7 +18,7 @@ compatibility: >-
   stdlib only. Excalidraw diagram rendering requires uv + Playwright (optional).
 metadata:
   author: Murali K
-  version: "1.0.0"
+  version: "1.3.1"
   repository: https://github.com/iamurali/system-design-skill
 ---
 
@@ -113,7 +113,7 @@ PE is not "Staff but more." It is a qualitatively different signal:
 
 - **No name-dropping.** Every technology choice gets the trade-off triad:
   solves / worsens / when-to-change.
-- **No design before numbers.** Capacity estimation precedes architecture.
+- **No design before numbers.** Phase 2 capacity estimation precedes interface and architecture.
 - **No vague boxes.** If you cannot write the request, response, and primary
   key, the component is guesswork.
 - **No infinite uptime.** Every component fails. State the degradation story.
@@ -122,6 +122,23 @@ PE is not "Staff but more." It is a qualitatively different signal:
   invalidated assumption and redesign only the affected part.
 - **No complexity for its own sake.** The cheapest design that meets the
   constraints wins. Justify every added component.
+
+## Phase skills (read at each phase)
+
+Every phase has a **problem-agnostic skill** (like Phase 4 HLD). Load the skill
+for the current phase before the template.
+
+| Phase | Output | Primary skill |
+|-------|--------|---------------|
+| 1 | `01-requirements.md` | `references/requirements-skill.md` |
+| 2 | `02-non-functional-requirements.md` | `references/nfr-skill.md` (+ capacity estimation) |
+| 3 | `03–05` entities, API, schema | `references/interface-skill.md` |
+| 4 | `06-high-level-design.md` | `references/hld-skill.md` |
+| 5 | `07-deep-dives.md` | `references/deep-dive-skill.md` |
+| 6 | `08-bottlenecks-and-tradeoffs.md` | `references/bottlenecks-skill.md` |
+
+**Exemplars are shape-matched only** — see orchestrator tables per phase. Never
+default to the A7 trending exemplar for CRUD prompts.
 
 ## References (all relative to this skill directory)
 
@@ -146,6 +163,24 @@ PE is not "Staff but more." It is a qualitatively different signal:
   problems with company attribution and curveballs.
 - **[references/tradeoff-framework.md](references/tradeoff-framework.md)** --
   The 3-question method and common axis tradeoffs.
+- **[references/requirements-skill.md](references/requirements-skill.md)** —
+  Phase 1: reframe → shape → FRs → scale assumptions → SLIs → out-of-scope.
+- **[references/nfr-skill.md](references/nfr-skill.md)** — Phase 2: capacity
+  chain → latency budget → error budget → consistency → durability → ops.
+- **[references/interface-skill.md](references/interface-skill.md)** — Phase 3:
+  access patterns → entities → API → schema in one pass.
+- **[references/hld-skill.md](references/hld-skill.md)** — Phase 4: classify
+  shape → capabilities → research → compose.
+- **[references/deep-dive-skill.md](references/deep-dive-skill.md)** — Phase 5:
+  pick fragile components → three tiers → curveballs.
+- **[references/bottlenecks-skill.md](references/bottlenecks-skill.md)** —
+  Phase 6: bottlenecks, failure matrix, evolution, coverage sweep.
+- **[references/hld-archetypes.md](references/hld-archetypes.md)** — A1–A9
+  shapes; used from Phase 1 (provisional) through Phase 4 (final).
+- **[references/faang-interview-patterns.md](references/faang-interview-patterns.md)**
+  -- World-class calibration for requirements and interview bar. Read at Phase 1.
+- **[assets/templates/](assets/templates/)** -- Required section skeletons per
+  output file. Load the template matching the current phase before generating.
 - **[references/numbers-to-know.md](references/numbers-to-know.md)** -- Latency
   table, QPS tiers, powers of 2, estimation recipes.
 
@@ -157,7 +192,13 @@ PE is not "Staff but more." It is a qualitatively different signal:
 
 ## Exemplars
 
-Use `assets/exemplars/in-memory-cache` (exemplar for NFRs, latency budgets,
-runbooks) or `assets/exemplars/trending-articles-top-k` (exemplar for deep
-dives, capacity estimation) for output calibration. Read only the specific
-file matching the current phase, not the full 8-file set.
+**HLD exemplars are shape-specific — never default to one stack.**
+
+| Archetype | Folder | Use when |
+|-----------|--------|----------|
+| A1 CRUD | `assets/exemplars/url-shortener/` | URL shortener, KV, profile lookup |
+| A3 Cache | `assets/exemplars/in-memory-cache/` | Cache layer, eviction, replication |
+| A7 Aggregate | `assets/exemplars/trending-articles-top-k/` | **Only** top-K, trending, windowed aggregation |
+
+Read **one** file matching the current phase. For HLD on non-A7 prompts, prefer
+`url-shortener` or no exemplar. Copy **process** from `hld-skill.md`, not products.
