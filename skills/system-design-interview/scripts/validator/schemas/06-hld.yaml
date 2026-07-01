@@ -3,6 +3,8 @@ required_headings:
   h1: 1
   h2_min: 6
 required_sections:
+  - pattern: "(?i)(problem.shape|shape.classification|primary.archetype)"
+    name: "Problem shape classification section"
   - pattern: "(?i)(required.capabilit|capability.requirement)"
     name: "Required capabilities section"
   - pattern: "(?i)(architecture.research|research.*capabilit|options.evaluated)"
@@ -16,12 +18,12 @@ required_sections:
 flows:
   data_flow:
     patterns:
-      - "(?i)(flow.1|write.*path|data.*flow|ingestion|write.*flow)"
-      - "(?i)(producer|publisher|writer|ingest)"
+      - "(?i)(flow.1|write.*path|data.*flow|mutation|write.*flow)"
+      - "(?i)(producer|publisher|writer|ingest|create|put|post)"
     description: "Write/data flow present"
   read_flow:
     patterns:
-      - "(?i)(flow.2|read.*path|read.*flow|query.*path|serving.*layer)"
+      - "(?i)(flow.2|read.*path|read.*flow|query.*path|redirect|serving)"
       - "(?i)(latency.budget|per.hop)"
     description: "Read/query flow with latency budget"
   failure_flow:
@@ -36,31 +38,26 @@ flows:
     description: "Deployment flow present"
 start_cheap:
   patterns:
-    - "(?i)(start.cheap|v0|monolith|single.db|cheapest|before.*kafka|before.*redis)"
-    - "(?i)(architecture.evolution|incremental|scale.trigger)"
+    - "(?i)(start.cheap|v0|monolith|single.db|cheapest|architecture.evolution)"
+    - "(?i)(scale.trigger|breaking.point|first.*bottleneck)"
   min: 2
   description: "Incremental design from simple baseline"
 component_registry:
   owner_pattern: "(?i)(owner|team)"
   capacity_pattern: "(?i)(\\d+[KMB]?\\s*(QPS|req|ops|TPS)|\\d+\\s*QPS|handles.*\\d+)"
   failure_pattern: "(?i)(if.*fails|when.*down|failure.*mode|degrades)"
-  min_rows: 4
+  min_rows: 3
   description: "Component registry with capacity, failure, owner"
-component_annotations:
-  capacity_pattern: "(?i)(\\d+[KMB]?\\s*(QPS|req|ops|TPS)|\\d+\\s*QPS|handles.*\\d+)"
-  failure_pattern: "(?i)(if.*fails|when.*down|failure.*mode|degrades)"
-  min_annotated: 3
-  description: "Components annotated with capacity and failure modes"
 tradeoff_triads:
   patterns:
     - "(?i)(solves|worsens|change.*(it|this|decision))"
     - "(?i)(what.*solve|what.*worse|what.*change)"
     - "(?i)(benefit|cost|when.to.switch)"
-  min: 4
+  min: 3
   description: "Trade-off triads for major decisions"
 options_presented:
   patterns:
-    - "(?i)(option.*(A|B|C|1|2|3)|alternative|approach.*(1|2|A|B))"
+    - "(?i)(option|alternative|verdict|rejected|selected.because)"
     - "(?i)(vs\\.?|versus|compared.to|instead.of)"
-  min: 1
-  description: "At least one contested decision with multiple options"
+  min: 2
+  description: "Researched options with selection rationale"

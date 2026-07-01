@@ -73,15 +73,13 @@ decisions justified by read/write ratio.
 ### Phase 4: Design the Architecture (10-15 min)
 
 **Output**: `06-high-level-design.md`
-**Primary reference**: `hld-design-protocol.md` (forces-first; research before products)
+**Primary**: `hld-skill.md` + `hld-archetypes.md`
 **Template**: `assets/templates/06-high-level-design.template.md`
-**Also load**: `building-blocks-index.md`, `tradeoff-framework.md`, `research-protocol.md`
 
-**Mandatory order:** Required capabilities → v0 → architecture research (2+ contested
-layers) → role-based diagram → four flows → component registry → triads.
-
-Do **not** open with a canned stack. Derive capabilities from constraints; research
-options; then name implementations.
+1. Classify problem shape (A1–A9) — **not every problem is streaming/top-K**
+2. Derive capabilities with explicit **skip** for irrelevant layers
+3. v0 → research → compose topology matching archetype
+4. Four flows + registry + triads
 
 Incrementally optimize: capacity numbers from Phase 2 reveal bottlenecks.
 Add components only when a number forces them. Each addition gets the

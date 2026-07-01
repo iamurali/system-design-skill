@@ -1,103 +1,93 @@
 # High-Level Design — [Problem Name]
 
-> **Process:** capabilities → research → selection → flows. Do not copy a
-> canned stack. Technology names go in *Implementation* columns only after
-> Step 3 research.
+> Follow `references/hld-skill.md`. Classify archetype first. No default pipeline.
+
+## Problem Shape Classification
+
+| Signal | Value | Implication |
+|--------|-------|-------------|
+| Read QPS / Write QPS | | |
+| Read:write ratio | | |
+| P99 latency | ms | |
+| Consistency | | |
+| Dominant force | one sentence | |
+
+**Primary archetype:** A_ from `hld-archetypes.md`  
+**Secondary (if any):** A_
 
 ## Required Capabilities
 
-Derived from Phase 1–3 constraints. **No product names in this section.**
+No product names. Mark: **now** | **defer** | **skip**
 
-| Constraint (number) | Required capability | Layer (L0–L7) | Mandatory when |
-|---------------------|---------------------|---------------|----------------|
+| Capability | Layer | Trigger | Now / defer / skip |
+|------------|-------|---------|-------------------|
 | | | | |
 
 ## Architecture Evolution (Start Cheap)
 
-Capability-minimal versions — what you ship at 1× before adding layers.
+| Version | Trigger | Capabilities added | Deferred |
+|---------|---------|-------------------|----------|
+| v0 | 1× | | |
+| v1 | | | |
 
-| Version | Scale trigger | Capabilities present | Absent (deferred) | Why v0 works / breaks |
-|---------|---------------|----------------------|-------------------|------------------------|
-| v0 | 1× | | | |
-| v1 | | | | |
+**Breaking point:** ___ breaks at ___ QPS because ___.
 
-**Selected for current scale:** v___ — justified by [number].
+**Selected:** v___
 
 ## Architecture Research
 
-Run before finalizing products. Use `building-blocks-index.md` + research-protocol
-(+ web if needed). Minimum **2 contested capabilities**, 2–3 options each.
+### Research: [capability 1]
 
-### Research: [Capability 1 — e.g., durable write buffer]
+| Option class | Fits | Fails when | Ops / recovery | Verdict |
+|--------------|------|------------|----------------|---------|
+| | | | | |
 
-| Option | Fits forces | Breaks when | Ops / failure notes | Verdict |
-|--------|-------------|-------------|---------------------|---------|
-| A | | | | |
-| B | | | | |
-| C | | | | |
+**Selected:** ___ because ___
 
-**Selected:** ___ because ___ (cite QPS, freshness, or latency number).
-
-### Research: [Capability 2 — e.g., ranked read serving]
+### Research: [capability 2]
 
 (same table)
 
 ## System Overview
 
-Use **roles** in the diagram; implementations in parentheses only if decided.
-
 ```
-[Clients] → [Query API] → [Ranked materialized store] → response
-[Writers] → [Ingestion] → [Event log] → [Aggregator] → [Ranked materialized store]
+[Topology from YOUR archetype — CRUD, async, fanout, etc.]
 ```
 
 ## Flow 1: Write / Data Path
 
-1. [Role] → [Role] (protocol, ~X ms)
-→ Durable at: [role / store class]
+→ Durable at:
 
 ## Flow 2: Read / Query Path
 
 | Hop | Role | Protocol | Latency budget |
 |-----|------|----------|----------------|
 | | | | ms |
-| | **Total P99** | | **= Phase 2 target** |
+| | **Total P99** | | |
 
 ## Flow 3: Failure and Degradation
 
-### Failure: [Role / component] unavailable
+### Failure: [component A]
 
-- **User impact:**
-- **Degradation:**
-- **Recovery:**
-- **Stampede avoidance:**
+- User impact / Degradation / Recovery / Stampede avoidance:
 
-### Failure: [second component]
+### Failure: [component B]
 
-(same structure)
+(same)
 
 ## Flow 4: Deploy and Migration
-
-- **Strategy:**
-- **Schema / contract migration:**
-- **Rollback:**
 
 ## Component Registry
 
 | Role | Implementation | Capacity | Failure mode | Owner |
 |------|----------------|----------|--------------|-------|
-| | | | | |
 
 ## Technology Trade-off Triads
 
-Per capability added after v0:
-
 ### [Decision]
 
-- **Solves:**
-- **Worsens:**
-- **When to change:**
+- **Solves:** / **Worsens:** / **When to change:**
 
 ## Production References
 
-Evidence for **patterns**, not prescription: [system behavior, incident, lesson]
+Mechanism or incident tied to a decision above — not a generic stack reference.

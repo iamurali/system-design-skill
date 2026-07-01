@@ -1,8 +1,17 @@
 # High-Level Design — Trending Articles / Top-K
 
-> **Exemplar note:** This file shows **one researched outcome** for this problem.
-> Do not copy Kafka/Flink/Redis into other designs. Copy the **process**:
-> capabilities → research → selection → flows.
+> **Archetype A7 (Aggregate / windowed compute) only.** Do not use this HLD for CRUD, chat, or URL shortener prompts.
+
+## Problem Shape Classification
+
+| Signal | Value | Implication |
+|--------|-------|-------------|
+| Read QPS / Write QPS | 230K / 50K peak | Write-heavy ingestion + read-heavy serving |
+| Freshness | 60s on 1h window | Rules out batch-only v0 |
+| Dominant force | Windowed aggregation at 50K writes with 230K ranked reads | A7 + read cache |
+
+**Primary archetype:** A7 Aggregate / meter  
+**Secondary:** A3 Read-scaled serving (materialized top-K lists)
 
 ## Required Capabilities
 

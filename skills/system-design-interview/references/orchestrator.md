@@ -189,31 +189,38 @@ Do NOT re-read files 01-05 in full during Phases 4-6. Use this checkpoint.
 ## Phase 4: Design the Architecture
 
 **Output**: `06-high-level-design.md`
-**Load (in order)**:
-1. `references/hld-design-protocol.md` — **primary**; forces-first process
-2. `references/building-blocks-index.md` — capability vocabulary L0–L7
-3. `references/tradeoff-framework.md`
-4. `references/research-protocol.md` — run during Phase 4 for contested layers
-5. `assets/templates/06-high-level-design.template.md`
+**Load (in order — do not skip):**
+1. `references/hld-skill.md` — **primary** problem-agnostic HLD skill
+2. `references/hld-archetypes.md` — classify shape before any diagram
+3. `references/building-blocks-index.md` — capability vocabulary
+4. `references/tradeoff-framework.md`
+5. `references/research-protocol.md` — when Section 4 research is open
+6. `assets/templates/06-high-level-design.template.md`
 
-**Do not** start Phase 4 by naming products (Kafka, Redis, DynamoDB, etc.). Start
-with **required capabilities** derived from the context checkpoint.
+**Exemplar (optional, shape-matched only):**
 
-### Mandatory HLD process (from hld-design-protocol.md)
+| If archetype is… | Read HLD exemplar |
+|------------------|-------------------|
+| A1 Point CRUD | `assets/exemplars/url-shortener/06-high-level-design.md` |
+| A3 Read-scaled | `assets/exemplars/in-memory-cache/06-high-level-design.md` |
+| A7 Aggregate / top-K | `assets/exemplars/trending-articles-top-k/06-high-level-design.md` |
+| Other / mixed | **No HLD exemplar** — skill + template only |
 
-1. **Required Capabilities** — constraint → capability → building-block layer; no product names
-2. **Architecture Evolution (v0)** — credible minimal design at 1× numbers
-3. **Architecture Research** — per contested capability: 2–3 options, forces, selection with numbers
-   - Use web / research-protocol when local references are insufficient
-   - Append research summary to `10-interview-transcript.md` if external sources used
-4. **System overview** — diagram with **roles**; implementations only after research
-5. **Flow 1–4** — write, read (latency budget), failure, deploy
-6. **Component Registry** — Role | Implementation | Capacity | Failure | Owner
-7. **Trade-off triads** — per capability added after v0
-8. **Production references** — mechanisms and incidents, not brand name-drops
+**Never** default to the trending/top-K exemplar. If the prompt is not aggregation-heavy, loading it will bias the design.
 
-Each implementation choice beyond v0 must cite the **constraint number** that
-forces it and the **rejected alternative** with reason.
+### Phase 4 workflow (from hld-skill.md)
+
+1. **Problem Shape Classification** — signals table + primary archetype
+2. **Required Capabilities** — no product names; now/defer/skip per capability
+3. **Architecture Evolution** — credible v0 at 1×; breaking points with numbers
+4. **Architecture Research** — ≥2 contested capabilities (or 1 if trivial CRUD at low QPS)
+5. **System Overview** — topology from **archetype**, not a default pipeline
+6. **Flows 1–4** — write, read (latency budget), failure, deploy
+7. **Component Registry** — Role | Implementation | Capacity | Failure | Owner
+8. **Trade-off triads** — per capability added after v0
+9. **Production evidence** — tied to decisions made above
+
+**Do not** start with product names. **Do not** assume ingest→log→stream→cache unless A7 (or hybrid) classification requires it.
 
 ### Mandatory Flow Coverage
 
@@ -248,8 +255,9 @@ Every major component (not leaf utilities) in the architecture MUST have:
 |---|-----------|----------------|
 | a | Starting design valid | The "cheap" starting design genuinely handles current-scale numbers from the context checkpoint (not a strawman dismissed in one sentence). |
 | b | Components justified | Every component added beyond starting design traces to a specific bottleneck number from the checkpoint. |
-| c | Options presented | At least **2 contested capabilities** each show 2–3 options with named forces; selection justified by numbers. |
-| c2 | Research before products | `Required Capabilities` and `Architecture Research` sections present; diagram leads with roles, not a canned stack. |
+| c | Options presented | At least **2 contested capabilities** (or 1 if trivial low-QPS CRUD) with 2–3 options and numeric justification. |
+| c2 | Shape-led design | `Problem Shape Classification` + archetype present; capabilities include explicit **skip** for irrelevant patterns (e.g. no stream if not A7). |
+| c3 | Research before products | `Architecture Research` sections present; diagram topology matches archetype, not a default pipeline. |
 | d | Checkpoint consistency | Architecture handles the QPS, storage, and latency from the context checkpoint. Spot-check: do the numbers match? |
 | e | Failure flow present | At least 2 component failures are traced through the system showing degradation behavior, recovery path, and user-facing impact. |
 | f | Deploy flow present | Canary/rolling strategy, schema migration, and rollback documented. |
@@ -707,6 +715,7 @@ All references live in `references/` relative to this file.
 | `references/tradeoff-framework.md` | Phase 4 when articulating design decisions. |
 | `references/numbers-to-know.md` | Phase 1 and Phase 2 for estimation. |
 | `references/faang-interview-patterns.md` | Phase 1 and Phase 4 for world-class calibration. |
-| `references/hld-design-protocol.md` | **Phase 4 primary** — forces-first, research-driven HLD. |
+| `references/hld-skill.md` | **Phase 4 primary** — problem-agnostic HLD loop. |
+| `references/hld-archetypes.md` | Phase 4 — classify CRUD / feed / cache / aggregate / etc. |
 | `assets/templates/` | Each phase — load matching template before generating. |
 | `excalidraw-diagram` skill (companion) | Phase 4b (after Gate 4 passes). |

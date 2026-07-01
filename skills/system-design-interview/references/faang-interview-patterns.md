@@ -115,10 +115,11 @@ One top failure scenario with detect → mitigate → recover steps (not "add mo
 
 ---
 
-## HLD Phase — World-Class Architecture
+## HLD Phase — Use the HLD Skill
 
-**Read `hld-design-protocol.md` first.** HLD is constraint-led and
-research-driven — not a directional pick of Kafka, Redis, or Flink.
+Read **`hld-skill.md`** and **`hld-archetypes.md`** at Phase 4. Classify the
+problem shape (CRUD, cache, feed, fanout, aggregate, …) before drawing. Not
+every system is a streaming pipeline.
 
 ### Process (mandatory order)
 

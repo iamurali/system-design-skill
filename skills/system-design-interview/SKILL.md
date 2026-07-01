@@ -18,7 +18,7 @@ compatibility: >-
   stdlib only. Excalidraw diagram rendering requires uv + Playwright (optional).
 metadata:
   author: Murali K
-  version: "1.1.0"
+  version: "1.2.0"
   repository: https://github.com/iamurali/system-design-skill
 ---
 
@@ -146,9 +146,10 @@ PE is not "Staff but more." It is a qualitatively different signal:
   problems with company attribution and curveballs.
 - **[references/tradeoff-framework.md](references/tradeoff-framework.md)** --
   The 3-question method and common axis tradeoffs.
-- **[references/hld-design-protocol.md](references/hld-design-protocol.md)**
-  -- **Phase 4 primary:** forces-first HLD; capability derivation; mandatory
-  architecture research before product selection. Not a directional tech stack.
+- **[references/hld-skill.md](references/hld-skill.md)** — **Phase 4 entry point:**
+  problem-agnostic HLD (classify shape → capabilities → research → compose).
+- **[references/hld-archetypes.md](references/hld-archetypes.md)** — CRUD, feed,
+  cache, fanout, aggregate/top-K, etc. Pick archetype before diagramming.
 - **[references/faang-interview-patterns.md](references/faang-interview-patterns.md)**
   -- World-class calibration for requirements and interview bar. Read at Phase 1.
 - **[assets/templates/](assets/templates/)** -- Required section skeletons per
@@ -164,8 +165,13 @@ PE is not "Staff but more." It is a qualitatively different signal:
 
 ## Exemplars
 
-Use `assets/exemplars/trending-articles-top-k` as the **primary PE-grade
-calibration exemplar** for **process** (capabilities → research → selection).
-**Do not copy its Kafka/Flink/Redis choices** into other problems — run the
-HLD protocol for each prompt. Use `assets/exemplars/in-memory-cache` for NFR
-patterns. Read only the file matching the current phase.
+**HLD exemplars are shape-specific — never default to one stack.**
+
+| Archetype | Folder | Use when |
+|-----------|--------|----------|
+| A1 CRUD | `assets/exemplars/url-shortener/` | URL shortener, KV, profile lookup |
+| A3 Cache | `assets/exemplars/in-memory-cache/` | Cache layer, eviction, replication |
+| A7 Aggregate | `assets/exemplars/trending-articles-top-k/` | **Only** top-K, trending, windowed aggregation |
+
+Read **one** file matching the current phase. For HLD on non-A7 prompts, prefer
+`url-shortener` or no exemplar. Copy **process** from `hld-skill.md`, not products.
