@@ -1,33 +1,49 @@
 file_pattern: "06-high-level-design.md"
 required_headings:
   h1: 1
-  h2_min: 3
+  h2_min: 6
 required_sections:
+  - pattern: "(?i)(architecture.evolution|start.cheap|evolution.*cheap)"
+    name: "Start-cheap / architecture evolution section"
+  - pattern: "(?i)(component.registry|component.*table)"
+    name: "Component registry section"
   - pattern: "(?i)(architect|system|design|diagram|overview)"
     name: "Architecture overview"
 flows:
   data_flow:
     patterns:
-      - "(?i)(write.*path|data.*flow|ingestion|write.*flow)"
+      - "(?i)(flow.1|write.*path|data.*flow|ingestion|write.*flow)"
       - "(?i)(producer|publisher|writer|ingest)"
     description: "Write/data flow present"
   read_flow:
     patterns:
-      - "(?i)(read.*path|read.*flow|query.*path|serving.*layer)"
-      - "(?i)(consumer|reader|fetch|serve)"
-    description: "Read/query flow present"
+      - "(?i)(flow.2|read.*path|read.*flow|query.*path|serving.*layer)"
+      - "(?i)(latency.budget|per.hop)"
+    description: "Read/query flow with latency budget"
   failure_flow:
     patterns:
-      - "(?i)(failure.*flow|degradation|failover|what.*happens.*when)"
-      - "(?i)(circuit.breaker|fallback|graceful)"
+      - "(?i)(flow.3|failure.*flow|degradation|failover|what.*happens.*when)"
+      - "(?i)(stampede|thundering|circuit.breaker|fallback)"
     description: "Failure/degradation flow present"
   deploy_flow:
     patterns:
-      - "(?i)(deploy|rollout|canary|blue.green|rolling)"
-      - "(?i)(zero.downtime|migration|cutover)"
+      - "(?i)(flow.4|deploy|rollout|canary|blue.green|rolling)"
+      - "(?i)(zero.downtime|migration|rollback|cutover)"
     description: "Deployment flow present"
+start_cheap:
+  patterns:
+    - "(?i)(start.cheap|v0|monolith|single.db|cheapest|before.*kafka|before.*redis)"
+    - "(?i)(architecture.evolution|incremental|scale.trigger)"
+  min: 2
+  description: "Incremental design from simple baseline"
+component_registry:
+  owner_pattern: "(?i)(owner|team)"
+  capacity_pattern: "(?i)(\\d+[KMB]?\\s*(QPS|req|ops|TPS)|\\d+\\s*QPS|handles.*\\d+)"
+  failure_pattern: "(?i)(if.*fails|when.*down|failure.*mode|degrades)"
+  min_rows: 4
+  description: "Component registry with capacity, failure, owner"
 component_annotations:
-  capacity_pattern: "(?i)(\\d+[KMB]?\\s*(QPS|req|ops|TPS)|handles.*\\d+)"
+  capacity_pattern: "(?i)(\\d+[KMB]?\\s*(QPS|req|ops|TPS)|\\d+\\s*QPS|handles.*\\d+)"
   failure_pattern: "(?i)(if.*fails|when.*down|failure.*mode|degrades)"
   min_annotated: 3
   description: "Components annotated with capacity and failure modes"

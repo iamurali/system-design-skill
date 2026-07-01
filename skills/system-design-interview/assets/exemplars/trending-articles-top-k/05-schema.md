@@ -175,3 +175,14 @@ TTL: 2 × update_interval (e.g., 60s for 30s updates)
 | industry | string | |
 | scope | enum | global, network |
 | materialized | bool | Pre-compute or on-demand |
+
+---
+
+## Sharding Strategy
+
+**Kafka:** 200 partitions; shard key = `hash(content_id)`. Justified by **50K peak write QPS** — ~250 msg/s per partition average, ~1.25K peak with hot spots. Scale partitions at 10×.
+
+**Redis Cluster:** 16 shards; key = `trending:{window}:{geo}:{category}`. Read path **230K QPS** → ~14K QPS per shard with replicas.
+
+**Flink:** Parallelism = Kafka partitions; keyed state by `(segment_id, content_id_bucket)`.
+

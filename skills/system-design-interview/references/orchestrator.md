@@ -18,7 +18,9 @@ For each phase 1-6:
     2. EVALUATE against the phase gate
     3. PASS → proceed to next phase
     4. FAIL → identify failure, FIX only that part, re-evaluate
-    After 2 failures: flag in "known issues", proceed anyway
+    5. After 2 failures: document in context checkpoint "known issues" and
+       fix in outer eval loop — do NOT proceed with known Gate failures on
+       capacity chain, start-cheap design, or missing failure flows.
 
 After all 6 phases:
   INTERVIEWER-RESEARCH LOOP (default after Phases 4, 5, 6):
@@ -42,14 +44,21 @@ After all 6 phases:
 
 1. Read `references/reasoning-engine.md` lines 1-131 (phase descriptions only).
    Skip the failure modes and checklists -- they are needed only at Phase 6.
-2. Scan existing problem folders in the output directory (default:
+2. Read `references/faang-interview-patterns.md` for world-class calibration
+   (requirements framing, estimation chain, HLD incremental design, company bar).
+3. Scan existing problem folders in the output directory (default:
    `system-design/` relative to the user's project root) to check for slug
    collisions. Derive `<problem-name>` as a short kebab-case slug from the
    prompt (e.g., "url-shortener", "distributed-cache", "news-feed").
-   Read one exemplar file (not all 8) from `assets/exemplars/` matching the
-   current phase when calibrating output quality.
-3. If the user names a company, read `references/company-profiles.md`.
-4. If the user asks "what should I practice," read `references/problem-bank.md`.
+4. **Load the phase template** from `assets/templates/` for the current phase
+   (e.g., `01-requirements.template.md`). Fill every required section; do not
+   skip headings the template defines.
+5. Read one exemplar file (not all 8) from `assets/exemplars/` matching the
+   current phase when calibrating output quality. Exemplars must pass the
+   validator — use them for depth and tone, templates for structure.
+6. If the user names a company, read `references/company-profiles.md` and
+   apply the calibration table in `faang-interview-patterns.md`.
+7. If the user asks "what should I practice," read `references/problem-bank.md`.
 
 Do NOT preload all 7 reference files. Load just-in-time per phase.
 
@@ -66,24 +75,32 @@ Interviewer must be blind to self-scores and phase gate PASS/FAIL claims.
 ## Phase 1: Frame the Problem
 
 **Output**: `01-requirements.md`
-**Load**: `references/numbers-to-know.md`
+**Load**: `references/numbers-to-know.md`, `references/faang-interview-patterns.md`,
+`assets/templates/01-requirements.template.md`
 
-- State functional requirements with company-scale context.
-- Capacity estimation: DAU → read QPS → write QPS → storage/day → total
-  storage → bandwidth → server count.
-- Explicit out-of-scope with one-line reasoning per exclusion.
-- For data-intensive problems: ranking signals, time windows, personalization.
-- **PE signal**: Question the problem framing. Surface hidden requirements.
-  Propose scope that reveals judgment.
+Follow the template exactly. This phase combines **functional requirements and
+the full capacity estimation chain** — FAANG interviews treat scale as part of
+requirements, not a separate afterthought.
+
+- State functional requirements with company-scale context (2–4 core features).
+- **Problem reframing**: question the prompt; surface hidden requirements.
+- **Capacity estimation chain** (all links required):
+  DAU → read QPS → write QPS → storage/day → total storage → bandwidth →
+  server count. Show assumptions and math inline.
+- **Growth trajectory**: 1×, 10×, 100× inputs and what breaks first at each tier.
+- **Success metrics (SLIs)**: 2–3 measurable signals before architecture.
+- Explicit out-of-scope: minimum 3 items, each with one-line reasoning.
+- For data-intensive problems: ranking signals, time windows, personalization scope.
 
 ### Gate 1 -- evaluate before proceeding
 
 | # | Criterion | Pass condition |
 |---|-----------|----------------|
-| a | Capacity chain complete | All links present: DAU → read QPS → write QPS → storage/day → total storage → bandwidth. No gaps. |
-| b | Reframing present | At least 1 problem reframing or hidden requirement surfaced (not just clarifications). |
+| a | Capacity chain complete | All links: DAU, read QPS, write QPS, storage/day, total storage, bandwidth, server count. |
+| b | Reframing present | At least 1 problem reframing or hidden requirement (not just clarifications). |
 | c | Out-of-scope coverage | At least 3 out-of-scope items, each with one-line reasoning. |
-| d | Numbers plausibility | Cross-check key numbers against `references/numbers-to-know.md`. Order-of-magnitude correct. |
+| d | Numbers plausibility | Cross-check against `numbers-to-know.md`. Order-of-magnitude correct. |
+| e | Growth trajectory | 10× and 100× scale inputs stated with first breaking constraint. |
 
 **If any criterion fails**: identify the specific gap, fix only that section of
 `01-requirements.md`, re-evaluate. Max 2 iterations.
@@ -93,18 +110,18 @@ Interviewer must be blind to self-scores and phase gate PASS/FAIL claims.
 ## Phase 2: Set the Constraints
 
 **Output**: `02-non-functional-requirements.md`
-**Load**: `references/numbers-to-know.md` (if not already loaded)
+**Load**: `references/numbers-to-know.md`, `assets/templates/02-non-functional-requirements.template.md`
+
+NFRs must **trace to Phase 1 numbers**. Do not invent a separate scale story.
 
 - Percentile latency targets (P50/P95/P99/P99.9) with latency budget breakdown
-  showing where each millisecond goes.
-- Availability with SRE error budget math.
+  that sums to P99 (±10%).
+- Availability with SRE error budget math (concrete downtime per month).
 - Consistency model with explicit user-facing consequence.
-- Durability guarantees by failure class.
+- Durability guarantees by data class (RPO/RTO table).
+- Security NFRs (auth, encryption, abuse).
 - Operational requirements: zero-downtime deploy, monitoring thresholds, runbook
-  sketches.
-- Security NFRs.
-- **PE signal**: Error budget math connecting to deployment cadence. Runbooks
-  beyond "add monitoring."
+  sketch for top failure scenario.
 
 ### Gate 2 -- evaluate before proceeding
 
@@ -172,19 +189,24 @@ Do NOT re-read files 01-05 in full during Phases 4-6. Use this checkpoint.
 ## Phase 4: Design the Architecture
 
 **Output**: `06-high-level-design.md`
-**Load**: `references/building-blocks-index.md`, `references/tradeoff-framework.md`
+**Load**: `references/building-blocks-index.md`, `references/tradeoff-framework.md`,
+`references/faang-interview-patterns.md`, `assets/templates/06-high-level-design.template.md`
 
-- Start with the cheapest design that satisfies requirements. Single DB,
-  monolith, no cache. State why it works at current scale.
-- Incrementally optimize: capacity numbers reveal bottlenecks. Add components
-  only when a number forces them. Each addition gets the trade-off triad:
-  solves / worsens / when-to-change.
-- Cite production system references where the design mirrors or diverges.
-- ASCII architecture diagrams with component boundaries, data flow, protocols.
-- For each technology choice: what it solves, what it worsens, what would
-  change it.
-- **PE signal**: 2-3 architecture options for the most contested decision with
-  named forces. Selection is judgment, not default.
+**World-class HLD order (do not skip):**
+
+1. **Architecture Evolution (Start Cheap)** — v0 design that genuinely works at
+   Phase 1 numbers; v1/v2 triggered by specific bottlenecks.
+2. **Contested decision** — 2–3 options with named forces; selection as judgment.
+3. **System overview** — ASCII diagram with QPS on arrows, protocols labeled.
+4. **Flow 1: Write path** — every hop to durable storage.
+5. **Flow 2: Read path** — per-hop latency budget summing to Phase 2 P99.
+6. **Flow 3: Failure** — ≥2 component failures with degradation + stampede avoidance.
+7. **Flow 4: Deploy** — canary/rolling, schema migration, rollback.
+8. **Component Registry** — table: Component | Capacity | Failure mode | Owner.
+9. **Trade-off triads** — solves / worsens / when-to-change per major addition.
+10. **Production references** — how real systems behave, not name-drops.
+
+Each technology choice beyond v0 must cite the **number** that forces it.
 
 ### Mandatory Flow Coverage
 
@@ -222,6 +244,9 @@ Every major component (not leaf utilities) in the architecture MUST have:
 | c | Options presented | At least 1 contested decision shows 2-3 options with named forces that pick between them. |
 | d | Checkpoint consistency | Architecture handles the QPS, storage, and latency from the context checkpoint. Spot-check: do the numbers match? |
 | e | Failure flow present | At least 2 component failures are traced through the system showing degradation behavior, recovery path, and user-facing impact. |
+| f | Deploy flow present | Canary/rolling strategy, schema migration, and rollback documented. |
+| g | Component registry | Table with capacity, failure mode, and owner for each major component. |
+| h | Read-path latency budget | Per-hop budgets in Flow 2 sum to Phase 2 P99 (±10%). |
 
 ---
 
@@ -673,4 +698,6 @@ All references live in `references/` relative to this file.
 | `references/problem-bank.md` | When user asks for a problem to practice. |
 | `references/tradeoff-framework.md` | Phase 4 when articulating design decisions. |
 | `references/numbers-to-know.md` | Phase 1 and Phase 2 for estimation. |
+| `references/faang-interview-patterns.md` | Phase 1 and Phase 4 for world-class calibration. |
+| `assets/templates/` | Each phase — load matching template before generating. |
 | `excalidraw-diagram` skill (companion) | Phase 4b (after Gate 4 passes). |

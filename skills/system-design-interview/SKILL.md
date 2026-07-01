@@ -18,7 +18,7 @@ compatibility: >-
   stdlib only. Excalidraw diagram rendering requires uv + Playwright (optional).
 metadata:
   author: Murali K
-  version: "1.0.0"
+  version: "1.1.0"
   repository: https://github.com/iamurali/system-design-skill
 ---
 
@@ -146,6 +146,11 @@ PE is not "Staff but more." It is a qualitatively different signal:
   problems with company attribution and curveballs.
 - **[references/tradeoff-framework.md](references/tradeoff-framework.md)** --
   The 3-question method and common axis tradeoffs.
+- **[references/faang-interview-patterns.md](references/faang-interview-patterns.md)**
+  -- World-class calibration: FAANG interview flow, estimation chain, HLD
+  incremental design, company-specific emphasis. Read at Phase 1 and Phase 4.
+- **[assets/templates/](assets/templates/)** -- Required section skeletons per
+  output file. Load the template matching the current phase before generating.
 - **[references/numbers-to-know.md](references/numbers-to-know.md)** -- Latency
   table, QPS tiers, powers of 2, estimation recipes.
 
@@ -157,7 +162,7 @@ PE is not "Staff but more." It is a qualitatively different signal:
 
 ## Exemplars
 
-Use `assets/exemplars/in-memory-cache` (exemplar for NFRs, latency budgets,
-runbooks) or `assets/exemplars/trending-articles-top-k` (exemplar for deep
-dives, capacity estimation) for output calibration. Read only the specific
-file matching the current phase, not the full 8-file set.
+Use `assets/exemplars/trending-articles-top-k` as the **primary PE-grade
+calibration exemplar** (passes validator at 100%). Use
+`assets/exemplars/in-memory-cache` for NFR/latency budget patterns. Read only
+the file matching the current phase, not the full 8-file set.

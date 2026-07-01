@@ -13,9 +13,12 @@ thinking IS the deliverable, not the final diagram.
 ### Phase 1: Frame the Problem (5-8 min)
 
 **Output**: `01-requirements.md`
+**Template**: `assets/templates/01-requirements.template.md`
+**References**: `numbers-to-know.md`, `faang-interview-patterns.md`
 
-Turn the vague prompt into functional requirements, non-functional constraints,
-and an explicit out-of-scope. Scope to 2-4 core features and say so.
+Turn the vague prompt into functional requirements, **full capacity estimation chain**,
+growth trajectory (1×/10×/100×), success metrics, and explicit out-of-scope.
+Scope to 2-4 core features and say so.
 
 **What to clarify before drawing anything:**
 - Who are the users? How many? Growth trajectory?
@@ -70,6 +73,12 @@ decisions justified by read/write ratio.
 ### Phase 4: Design the Architecture (10-15 min)
 
 **Output**: `06-high-level-design.md`
+**Template**: `assets/templates/06-high-level-design.template.md`
+**References**: `building-blocks-index.md`, `tradeoff-framework.md`, `faang-interview-patterns.md`
+
+**Mandatory order:** Architecture Evolution (start cheap) → contested decision options →
+four flows (write, read with latency budget, failure, deploy) → component registry →
+trade-off triads.
 
 Start cheap. A single DB, a monolith, no cache. This works at small scale.
 
